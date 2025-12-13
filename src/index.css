@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+.user-select-none {
+    -webkit-user-select: none; /* Safari */
+    -moz-user-select: none;    /* Firefox */
+    -ms-user-select: none;     /* IE10+/Edge */
+    user-select: none;         /* Standard */
+}
+
+.user-drag-none {
+    -webkit-user-drag: none; /* Safari and Chrome */
+    user-drag: none;         /* Standard */
+}
+
+
+.header {
+    background-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
