@@ -7,11 +7,18 @@ A blog app I'm building to learn React and Appwrite. Still a work in progress.
 
 ## What's Done So Far
 
-- ✅ Basic setup with React (Vite) and Tailwind
-- ✅ Appwrite authentication (signup, login, logout)
-- ✅ Basic layout with header and footer
-- 🔄 Working on Redux integration
-- ⏳ Planning: protected routes, blog posts CRUD, rich text editor
+- ✅ React (Vite) + Tailwind CSS setup with custom CSS variables
+- ✅ Appwrite authentication service (signup, login, logout, getCurrentUser)
+- ✅ Redux Toolkit integration (store, authSlice with login/logout actions)
+- ✅ Reusable components (Button, Input, Container)
+- ✅ Header with dynamic navigation (shows different links based on auth status)
+- ✅ Footer with links and responsive design
+- ✅ LogoutBtn component with Redux dispatch integration
+- ✅ Appwrite database service (CRUD for blog posts - create, read, update, delete)
+- ✅ React Router setup with protected routes logic
+- ✅ User session management with useEffect in App.jsx
+- 🔄 Working on: Pages folder structure (currently empty)
+- ⏳ Planning: Login/Signup forms, post pages, TinyMCE integration, image uploads
 
 ---
 
@@ -79,28 +86,40 @@ Opens at `http://localhost:5173`
 ```
 src/
 ├── Components/
+│   ├── Button.jsx            # Reusable button component with custom styling
+│   ├── Input.jsx             # Reusable input component with forwardRef
 │   ├── Home.jsx              # Home page component
+│   ├── index.js              # Components barrel export
+│   ├── Container/
+│   │   └── Container.jsx     # Layout container wrapper
 │   ├── Header/
-│   │   └── Header.jsx        # Navigation header
+│   │   ├── Header.jsx        # Navigation with auth-based routing
+│   │   └── LogoutBtn.jsx     # Logout button with Redux dispatch
 │   └── Footer/
-│       └── Footer.jsx        # Footer component
+│       └── Footer.jsx        # Footer with links and social media
+├── Store/
+│   ├── store.js              # Redux store configuration
+│   └── authSlice.js          # Auth state slice (login/logout reducers)
 ├── appwrite/
-│   ├── auth.js               # Authentication service (Login, Signup, Logout)
-│   └── config.js             # Appwrite configuration (empty - using conf.js)
+│   ├── auth.js               # Authentication service (signup, login, logout)
+│   └── config.js             # Database & Storage service (posts CRUD, file uploads)
 ├── conf/
 │   └── conf.js               # Environment variables configuration
-├── assets/                   # Static assets (images, icons, etc.)
-├── App.jsx                   # Root component with layout
-├── App.css                   # App-wide styles
-├── main.jsx                  # Application entry point
-├── index.css                 # Global styles
+├── pages/                    # (Empty - future page components)
+├── assets/                   # Images and static files
+├── App.jsx                   # Root component with auth check
+├── App.css                   # Custom CSS variables
+├── main.jsx                  # Entry point with Redux Provider & Router
+└── index.css                 # Global Tailwind styles
 ```
 
-### Key Files Explained
+### Key Features Implemented
 
-- **`src/appwrite/auth.js`** - AuthService class handling user authentication with Appwrite
-- **`src/conf/conf.js`** - Centralized configuration for environment variables
-- **`src/main.jsx`** - React Router setup and application initialization
+- **Redux State Management:** Global auth state with login/logout actions
+- **Protected Routes:** Header navigation changes based on authentication status
+- **Appwrite Services:** Complete auth & database services for posts CRUD
+- **Reusable Components:** Button and Input components with custom props
+- **Session Persistence:** Auto-login on app load via getCurrentUser
 
 ---
 
