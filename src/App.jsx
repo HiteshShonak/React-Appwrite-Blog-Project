@@ -33,14 +33,12 @@ function App() {
   }, []);
 
   return (!loading ? (
-    <div>
-    <div>
+    <div className="flex flex-col min-h-screen">
       <Header />
-      <main className="">
+      <main className="grow">
         <Outlet />
       </main>
       <Footer />
-    </div> 
     </div>
   ) : (
     

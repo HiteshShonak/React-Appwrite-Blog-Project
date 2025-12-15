@@ -8,16 +8,16 @@ import LogoutBtn from "./LogoutBtn.jsx";
 function Header() {
   
   const authStatus = useSelector((state) => state.auth.status);
+  ;
 
   const navigate = useNavigate();
 
   const navItems = [
-    { name: 'Home', slug: '/', active: true },
+    { name: 'Home', slug: '/home', active: true },
     {name: 'Login', slug: '/login', active: !authStatus },
     {name: 'Signup', slug: '/signup', active: !authStatus },
     {name: 'All Posts', slug: '/all-posts', active: authStatus },
     {name: 'Add Post', slug: '/add-post', active: authStatus },
-
   ];
 
 
@@ -48,11 +48,12 @@ function Header() {
                     </li>
                   ))}
 
-                  {authStatus && (
+                  {authStatus ? (
                     <li>
                       <LogoutBtn />
                     </li>
-                  )}
+                  ) : null}
+
                   
                       
                   

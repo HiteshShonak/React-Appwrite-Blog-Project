@@ -10,15 +10,23 @@ A blog app I'm building to learn React and Appwrite. Still a work in progress.
 - ✅ React (Vite) + Tailwind CSS setup with custom CSS variables
 - ✅ Appwrite authentication service (signup, login, logout, getCurrentUser)
 - ✅ Redux Toolkit integration (store, authSlice with login/logout actions)
-- ✅ Reusable components (Button, Input, Container)
+- ✅ Reusable components (Button, Input, Container, Select)
 - ✅ Header with dynamic navigation (shows different links based on auth status)
 - ✅ Footer with links and responsive design
 - ✅ LogoutBtn component with Redux dispatch integration
 - ✅ Appwrite database service (CRUD for blog posts - create, read, update, delete)
 - ✅ React Router setup with protected routes logic
 - ✅ User session management with useEffect in App.jsx
-- 🔄 Working on: Pages folder structure (currently empty)
-- ⏳ Planning: Login/Signup forms, post pages, TinyMCE integration, image uploads
+- ✅ **NEW:** Login form component with React Hook Form validation
+- ✅ **NEW:** Signup form component with React Hook Form validation
+- ✅ **NEW:** TinyMCE rich text editor integration (RTE component)
+- ✅ **NEW:** PostCard component for displaying blog posts with featured images
+- ✅ **NEW:** AuthLayout component for route protection
+- ✅ **NEW:** Protected route wrapper (redirects based on auth status)
+- ✅ **NEW:** Page components created (Login, Signup, Home, AllPosts, AddPost, EditPost, Post)
+- ✅ **NEW:** PostForm component for creating/editing posts
+- 🔄 In Progress: Full integration of forms with routing
+- ⏳ Planning: Image upload optimization, post filtering/search
 
 ---
 
@@ -85,27 +93,41 @@ Opens at `http://localhost:5173`
 
 ```
 src/
+├── pages/
+│   ├── Login.jsx             # Login page wrapper
+│   ├── Signup.jsx            # Signup page wrapper
+│   ├── Home.jsx              # Home page
+│   ├── AllPosts.jsx          # List all blog posts
+│   ├── AddPost.jsx           # Create new post
+│   ├── EditPost.jsx          # Edit existing post
+│   └── Post.jsx              # Single post view
 ├── Components/
-│   ├── Button.jsx            # Reusable button component with custom styling
+│   ├── Button.jsx            # Reusable button component
 │   ├── Input.jsx             # Reusable input component with forwardRef
-│   ├── Home.jsx              # Home page component
-│   ├── index.js              # Components barrel export
+│   ├── Select.jsx            # Reusable select dropdown
+│   ├── RTE.jsx               # Rich Text Editor (TinyMCE integration)
+│   ├── PostCard.jsx          # Blog post card with featured image
+│   ├── Login.jsx             # Login form component
+│   ├── Signup.jsx            # Signup form component
+│   ├── AuthLayout.jsx        # Route protection wrapper (HOC)
+│   ├── index.js              # Barrel export
+│   ├── post-form/
+│   │   └── PostForm.jsx      # Form for creating/editing posts
 │   ├── Container/
 │   │   └── Container.jsx     # Layout container wrapper
 │   ├── Header/
 │   │   ├── Header.jsx        # Navigation with auth-based routing
 │   │   └── LogoutBtn.jsx     # Logout button with Redux dispatch
 │   └── Footer/
-│       └── Footer.jsx        # Footer with links and social media
+│       └── Footer.jsx        # Footer with links
 ├── Store/
 │   ├── store.js              # Redux store configuration
-│   └── authSlice.js          # Auth state slice (login/logout reducers)
+│   └── authSlice.js          # Auth state slice (login/logout)
 ├── appwrite/
-│   ├── auth.js               # Authentication service (signup, login, logout)
-│   └── config.js             # Database & Storage service (posts CRUD, file uploads)
+│   ├── auth.js               # Authentication service
+│   └── config.js             # Database & Storage service (posts CRUD)
 ├── conf/
-│   └── conf.js               # Environment variables configuration
-├── pages/                    # (Empty - future page components)
+│   └── conf.js               # Environment variables
 ├── assets/                   # Images and static files
 ├── App.jsx                   # Root component with auth check
 ├── App.css                   # Custom CSS variables
@@ -116,9 +138,12 @@ src/
 ### Key Features Implemented
 
 - **Redux State Management:** Global auth state with login/logout actions
-- **Protected Routes:** Header navigation changes based on authentication status
-- **Appwrite Services:** Complete auth & database services for posts CRUD
-- **Reusable Components:** Button and Input components with custom props
+- **Protected Routes:** AuthLayout HOC for route protection with auto-redirect
+- **Form Validation:** Login/Signup forms with React Hook Form
+- **Rich Text Editor:** TinyMCE integration for post content
+- **Post Management:** Create, read, update, delete blog posts
+- **Featured Images:** Display post images from Appwrite Storage
+- **Responsive Design:** Mobile-first approach with Tailwind CSS
 - **Session Persistence:** Auto-login on app load via getCurrentUser
 
 ---

@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom'
 
 function Footer() {
   return (
-    <footer className="fixed m-0 inset-x-0 bottom-0 z-20 bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 text-gray-100 border-t border-white/10 shadow-[0_-6px_16px_rgba(0,0,0,0.18)] backdrop-blur">
+    <footer className="mt-auto m-0 w-full bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 text-gray-100 border-t border-white/10 shadow-[0_-6px_16px_rgba(0,0,0,0.18)] backdrop-blur">
       <div className="flex max-md:justify-between  user-select-none user-drag-none px-6 py-6 flex-col gap-0 sm:flex-row md:items-start md:justify-between">
         <div className="space-y-0 w-max ">
           <img src={DarkLogo} alt="Logo for Footer" style={{width: 'var(--logo-footer-w)', height: 'var(--logo-footer-h)'}} className="object-contain"/>
