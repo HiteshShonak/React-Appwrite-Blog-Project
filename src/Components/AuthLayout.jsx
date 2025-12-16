@@ -16,7 +16,7 @@ export default function Protected({ children, authentication = true }) {
         } 
         // If route requires NO auth (like login/signup) but user IS logged in -> Home
         else if (!authentication && authStatus !== authentication) {
-            navigate('/');
+            navigate('/dashboard');
         }
         setLoader(false);
     }, [authStatus, navigate, authentication]);

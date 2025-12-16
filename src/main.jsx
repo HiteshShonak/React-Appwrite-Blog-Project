@@ -13,6 +13,12 @@ import AllPosts from './pages/AllPosts.jsx'
 import AddPost from './pages/AddPost.jsx'
 import EditPost from './pages/EditPost.jsx'
 import Post from './pages/Post.jsx'
+import Dashboard from './pages/Dashboard.jsx'
+import AboutUs from './pages/AboutUs.jsx'
+import Contact from './pages/Contact.jsx'
+import FAQ from './pages/FAQ.jsx'
+import NotFound from './pages/NotFound.jsx'
+import AuthorProfile from './Components/AuthorProfile.jsx'
 
 const router = createBrowserRouter([
   {path: '/',  
@@ -41,10 +47,26 @@ const router = createBrowserRouter([
   },
   {path: '/post/:slug',
     element: (<AuthLayout authentication={true}><Post /></AuthLayout>)
-  }
-  
+  },
+  {path: "/dashboard",
+    element: <Dashboard />
+  },
+  {path:"/about-us",
+    element:<AboutUs />
+  },
+  {path: "/contact",
+    element: <Contact />
+  },
+  {path: "/faq",
+    element: <FAQ />
+  },
+  {path: "/author/:userId",
+   element: <AuthorProfile />,
+  },
+  {path: "*", 
+   element: <NotFound />,
+  },
   ]
-    
   }]);
 
 createRoot(document.getElementById('root')).render(

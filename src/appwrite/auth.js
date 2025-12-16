@@ -28,7 +28,7 @@ export class AuthService {
             throw error;
         }
     }
-
+ 
     // Authenticates the user with Email and Password
     async login({ email, password }) {
         try {
@@ -47,13 +47,22 @@ export class AuthService {
         }
         return null;
     }
-
+    
     // Logs out the user by deleting all sessions
     async logout() {
         try {
             await this.account.deleteSessions();
         } catch (error) {
             console.log("Appwrite Service :: logout :: error", error);
+        }
+    }
+    //Profile Photo Update
+    async updateUserPrefs(prefs) {
+        try {
+            return await this.account.updatePrefs(prefs);
+        } catch (error) {
+            console.log("Appwrite service :: updateUserPrefs :: error", error);
+            throw error;
         }
     }
 }

@@ -1,32 +1,34 @@
 # React Appwrite Blog
 
-A blog app I'm building to learn React and Appwrite. Still a work in progress.
-
+A full-stack blogging platform built with React and Appwrite, featuring user authentication, post management, and interactive social features.
 
 ---
 
-## What's Done So Far
+## Features
 
-- ✅ React (Vite) + Tailwind CSS setup with custom CSS variables
-- ✅ Appwrite authentication service (signup, login, logout, getCurrentUser)
-- ✅ Redux Toolkit integration (store, authSlice with login/logout actions)
-- ✅ Reusable components (Button, Input, Container, Select)
-- ✅ Header with dynamic navigation (shows different links based on auth status)
-- ✅ Footer with links and responsive design
-- ✅ LogoutBtn component with Redux dispatch integration
-- ✅ Appwrite database service (CRUD for blog posts - create, read, update, delete)
-- ✅ React Router setup with protected routes logic
-- ✅ User session management with useEffect in App.jsx
-- ✅ **NEW:** Login form component with React Hook Form validation
-- ✅ **NEW:** Signup form component with React Hook Form validation
-- ✅ **NEW:** TinyMCE rich text editor integration (RTE component)
-- ✅ **NEW:** PostCard component for displaying blog posts with featured images
-- ✅ **NEW:** AuthLayout component for route protection
-- ✅ **NEW:** Protected route wrapper (redirects based on auth status)
-- ✅ **NEW:** Page components created (Login, Signup, Home, AllPosts, AddPost, EditPost, Post)
-- ✅ **NEW:** PostForm component for creating/editing posts
-- 🔄 In Progress: Full integration of forms with routing
-- ⏳ Planning: Image upload optimization, post filtering/search
+### Core Functionality
+- **User Authentication** - Complete signup/login system with session management
+- **Blog Post Management** - Create, read, update, and delete blog posts with rich text editing (TinyMCE)
+- **Protected Routes** - Route-level authentication guards for secure content access
+- **User Dashboard** - Personal dashboard showing user's posts (active and drafts)
+- **Author Profiles** - Dedicated profile pages for each author with their published posts
+
+### Social & Engagement
+- **Comments System** - Users can comment on posts with full CRUD operations
+- **Rating System** - Star-based rating (1-5 stars) with average rating display
+- **View Tracking** - Unique post view counter with cookie-based tracking
+- **Profile Pictures** - User avatar upload and management with Appwrite Storage
+
+### Additional Pages
+- About Us, Contact, FAQ
+- Custom 404 Not Found page
+
+### Technical Implementation
+- Redux Toolkit for global state management
+- React Hook Form for form validation
+- React Router with protected route wrappers
+- Responsive design with Tailwind CSS
+- Custom CSS variables for theming
 
 ---
 
@@ -93,58 +95,43 @@ Opens at `http://localhost:5173`
 
 ```
 src/
-├── pages/
-│   ├── Login.jsx             # Login page wrapper
-│   ├── Signup.jsx            # Signup page wrapper
-│   ├── Home.jsx              # Home page
-│   ├── AllPosts.jsx          # List all blog posts
-│   ├── AddPost.jsx           # Create new post
-│   ├── EditPost.jsx          # Edit existing post
-│   └── Post.jsx              # Single post view
-├── Components/
-│   ├── Button.jsx            # Reusable button component
-│   ├── Input.jsx             # Reusable input component with forwardRef
-│   ├── Select.jsx            # Reusable select dropdown
-│   ├── RTE.jsx               # Rich Text Editor (TinyMCE integration)
-│   ├── PostCard.jsx          # Blog post card with featured image
-│   ├── Login.jsx             # Login form component
-│   ├── Signup.jsx            # Signup form component
-│   ├── AuthLayout.jsx        # Route protection wrapper (HOC)
-│   ├── index.js              # Barrel export
-│   ├── post-form/
-│   │   └── PostForm.jsx      # Form for creating/editing posts
-│   ├── Container/
-│   │   └── Container.jsx     # Layout container wrapper
+├── pages/               # Page components
+│   ├── Home.jsx
+│   ├── Login.jsx
+│   ├── Signup.jsx
+│   ├── Dashboard.jsx
+│   ├── AllPosts.jsx
+│   ├── AddPost.jsx
+│   ├── EditPost.jsx
+│   ├── Post.jsx
+│   ├── AboutUs.jsx
+│   ├── Contact.jsx
+│   ├── FAQ.jsx
+│   └── NotFound.jsx
+├── Components/          # Reusable components
+│   ├── AuthLayout.jsx   # Route protection wrapper
+│   ├── Comments.jsx     # Comment system
+│   ├── Rating.jsx       # Star rating component
+│   ├── PostCard.jsx     # Post display card
+│   ├── RTE.jsx          # TinyMCE rich text editor
+│   ├── ProfilePictureManager.jsx
+│   ├── BioEditModal.jsx
+│   ├── AuthorProfile.jsx
 │   ├── Header/
-│   │   ├── Header.jsx        # Navigation with auth-based routing
-│   │   └── LogoutBtn.jsx     # Logout button with Redux dispatch
-│   └── Footer/
-│       └── Footer.jsx        # Footer with links
-├── Store/
-│   ├── store.js              # Redux store configuration
-│   └── authSlice.js          # Auth state slice (login/logout)
-├── appwrite/
-│   ├── auth.js               # Authentication service
-│   └── config.js             # Database & Storage service (posts CRUD)
-├── conf/
-│   └── conf.js               # Environment variables
-├── assets/                   # Images and static files
-├── App.jsx                   # Root component with auth check
-├── App.css                   # Custom CSS variables
-├── main.jsx                  # Entry point with Redux Provider & Router
-└── index.css                 # Global Tailwind styles
+│   ├── Footer/
+│   ├── post-form/
+│   └── Container/
+├── Store/               # Redux state management
+│   ├── store.js
+│   └── authSlice.js
+├── appwrite/            # Appwrite services
+│   ├── auth.js          # Authentication
+│   └── config.js        # Database & Storage
+├── utils/
+│   └── cookieUtils.js   # View tracking utilities
+├── conf/                # Configuration
+└── assets/              # Static files
 ```
-
-### Key Features Implemented
-
-- **Redux State Management:** Global auth state with login/logout actions
-- **Protected Routes:** AuthLayout HOC for route protection with auto-redirect
-- **Form Validation:** Login/Signup forms with React Hook Form
-- **Rich Text Editor:** TinyMCE integration for post content
-- **Post Management:** Create, read, update, delete blog posts
-- **Featured Images:** Display post images from Appwrite Storage
-- **Responsive Design:** Mobile-first approach with Tailwind CSS
-- **Session Persistence:** Auto-login on app load via getCurrentUser
 
 ---
 

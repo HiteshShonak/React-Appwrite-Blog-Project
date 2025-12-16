@@ -13,7 +13,9 @@ import Container from "./Container/Container.jsx";
 import PostForm from "./post-form/PostForm.jsx";
 import PostCard from './PostCard.jsx';
 import AuthLayout from "./AuthLayout.jsx";
+import ProfilePictureManager from "./ProfilePictureManager.jsx";
 
 
 
-export { Header, Footer, LogoutBtn, Button, Input, Logo, DarkLogo, RTE, Signup, Login, Select, Container, PostForm, PostCard };
+export { Header, Footer, LogoutBtn, Button, Input, Logo, DarkLogo, RTE, Signup, Login, Select, 
+    Container, PostForm, PostCard, AuthLayout, ProfilePictureManager };

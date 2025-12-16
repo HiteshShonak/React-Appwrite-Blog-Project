@@ -21,9 +21,9 @@ function Footer() {
           <div >
             <h4 style={{fontSize: 'var(--text-xs)'}} className="uppercase tracking-[0.25em] text-gray-500 mb-3">Company</h4>
             <ul className="space-y-2 text-gray-200" style={{fontSize: 'var(--text-base)'}}>
-              <li><Link className="hover:text-indigo-300 transition-colors" to="/about">About us</Link></li>
+              <li><Link className="hover:text-indigo-300 transition-colors" to="/about-us">About us</Link></li>
               <li><Link className="hover:text-indigo-300 transition-colors" to="/contact">Contact</Link></li>
-              <li><Link className="hover:text-indigo-300 transition-colors" to="/careers">Careers</Link></li>
+              <li><Link className="hover:text-indigo-300 transition-colors" to="/">Careers</Link></li>
               <li><Link className="hover:text-indigo-300 transition-colors" to="/">Press</Link></li>
             </ul>
           </div>
