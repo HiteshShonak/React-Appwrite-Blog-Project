@@ -214,7 +214,7 @@ function Comments({ postId, postAuthorId }) {
              {/* 🚨 DELETE MODAL (Fixed Centering) */}
             {deleteCommentId && (
                 // Added z-[100] to ensure it is always on top
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all animate-fadeIn">
+                <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all animate-fadeIn">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 border border-slate-100">
                         <div className="flex flex-col items-center text-center">
                             <div className="w-14 h-14 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-5 border border-rose-100">
