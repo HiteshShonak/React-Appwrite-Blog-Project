@@ -6,8 +6,8 @@ import {RouterProvider, createBrowserRouter} from 'react-router-dom'
 import { Provider } from 'react-redux';
 import store from './Store/store.js';
 import AuthLayout from './Components/AuthLayout.jsx';
-import Signup from './Pages/Signup.jsx';
-import Login from './Pages/Login.jsx'
+import Signup from './pages/Signup.jsx';
+import Login from './pages/Login.jsx'
 import Home from './pages/Home.jsx'
 import AllPosts from './pages/AllPosts.jsx'
 import AddPost from './pages/AddPost.jsx'
