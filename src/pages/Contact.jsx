@@ -51,7 +51,7 @@ function Contact() {
     }, [notification]);
 
     return (
-        <div className='w-full min-h-screen bg-slate-50 py-12 relative'>
+        <div className='w-full min-h-screen bg-slate-50 py-12 relative page-anim'>
             
             {/* Notification Toast */}
             {notification.message && (

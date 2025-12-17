@@ -1,60 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import appwriteService from '../appwrite/config';
+import { compressImage } from '../utils/compressImage';
+import AvatarCropper from './AvatarCropper'; // 🚨 Import New Component
 
-function ProfilePictureManager() {
+function ProfilePictureManager({ onProfileUpdate }) {
     const userData = useSelector((state) => state.auth.userData);
     const [fileId, setFileId] = useState(null);
     
-    // UI States from your original code
+    // UI States
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
+    
+    // 🚨 CROPPER STATE
+    const [selectedImageForCrop, setSelectedImageForCrop] = useState(null); 
 
-    // 1. Fetch the Profile Picture ID on mount (From new UserProfiles Collection)
     useEffect(() => {
         if (userData) {
-            appwriteService.getProfileImageFileId(userData.$id)
-                .then((id) => {
-                    setFileId(id);
-                });
+            appwriteService.getProfileImageFileId(userData.$id).then(setFileId);
         }
     }, [userData]);
 
-    // 2. Helper for Initials
     const getInitials = (name) => {
         if (!name) return 'U';
         const parts = name.trim().split(' ');
-        
-        if (parts.length >= 2) {
-            
-            return (parts[0][0] + parts[1][0]).toUpperCase();
-        }
-        
-        return name.charAt(0).toUpperCase();
+        return parts.length >= 2 ? (parts[0][0] + parts[1][0]).toUpperCase() : name.charAt(0).toUpperCase();
     };
 
-    // 3. Handle Upload (New Logic: UserProfiles Collection)
-    const handleProfilePicUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file || !userData) return;
+    // 1. User Selects File -> Open Cropper
+    const onFileSelect = (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.addEventListener('load', () => {
+                setSelectedImageForCrop(reader.result); // Set base64 URL for cropper
+            });
+            reader.readAsDataURL(file);
+        }
+    };
 
+    // 2. User Clicked "Save" in Cropper -> Compress -> Upload
+    const onCropComplete = async (croppedFile) => {
+        setSelectedImageForCrop(null); // Close Cropper
         setUploadingAvatar(true);
+
         try {
-            // A. Upload new file to bucket
-            const uploadedFile = await appwriteService.uploadProfilePicture(file);
+            // A. Compress the CROPPED file (It's now a perfect square, but might still be large)
+            const compressedFile = await compressImage(croppedFile, 'avatar', userData.name);
+
+            // B. Upload
+            const uploadedFile = await appwriteService.uploadProfilePicture(compressedFile);
             
             if (uploadedFile) {
-                // B. Link new file to user in DB
                 await appwriteService.saveProfileImageId(userData.$id, uploadedFile.$id);
                 
-                // C. Delete old file from bucket (Cleanup)
                 if (fileId) {
                     await appwriteService.deleteFile(fileId);
                 }
 
-                // D. Update local state
                 setFileId(uploadedFile.$id);
                 setIsAvatarModalOpen(false);
+                if (onProfileUpdate) onProfileUpdate();
             }
         } catch (error) {
             console.error("Error updating avatar:", error);
@@ -64,21 +70,15 @@ function ProfilePictureManager() {
         }
     };
 
-    // 4. Handle Removal
     const handleRemoveProfilePic = async () => {
         if (!fileId || !userData) return;
-
         setUploadingAvatar(true);
         try {
-            // A. Delete from bucket
             await appwriteService.deleteFile(fileId);
-
-            // B. Remove link in DB (Save as null)
             await appwriteService.saveProfileImageId(userData.$id, null);
-
-            // C. Update local state
             setFileId(null);
             setIsAvatarModalOpen(false);
+            if (onProfileUpdate) onProfileUpdate();
         } catch (error) {
             console.error("Error removing avatar:", error);
         } finally {
@@ -88,9 +88,16 @@ function ProfilePictureManager() {
 
     return (
         <>
-            {/* ------------------------------------------------------- */}
-            {/* 1. THE TRIGGER (AVATAR CIRCLE) - Kept your exact design */}
-            {/* ------------------------------------------------------- */}
+            {/* 🚨 RENDER CROPPER IF IMAGE SELECTED */}
+            {selectedImageForCrop && (
+                <AvatarCropper 
+                    imageSrc={selectedImageForCrop}
+                    onCancel={() => setSelectedImageForCrop(null)}
+                    onCropComplete={onCropComplete}
+                />
+            )}
+
+            {/* 1. THE TRIGGER */}
             <div 
                 onClick={() => setIsAvatarModalOpen(true)}
                 className="relative group w-16 h-16 rounded-full overflow-hidden border border-slate-200 shrink-0 cursor-pointer shadow-sm hover:shadow-md transition-all"
@@ -106,30 +113,21 @@ function ProfilePictureManager() {
                         {getInitials(userData?.name)}
                     </div>
                 )}
-
-                {/* Hover Overlay with Pencil */}
                 <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-                    <svg className="w-6 h-6 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
+                    <svg className="w-6 h-6 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                 </div>
             </div>
 
-            {/* ------------------------------------------------------- */}
-            {/* 2. THE MODAL (POPUP) - Kept your exact design           */}
-            {/* ------------------------------------------------------- */}
-            {isAvatarModalOpen && (
+            {/* 2. THE SELECTION MODAL */}
+            {isAvatarModalOpen && !selectedImageForCrop && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    {/* Backdrop */}
                     <div 
                         className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
                         onClick={() => setIsAvatarModalOpen(false)}
                     ></div>
 
-                    {/* Modal Card */}
                     <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform transition-all scale-100 overflow-hidden">
                         
-                        {/* Close Button */}
                         <button 
                             onClick={() => setIsAvatarModalOpen(false)}
                             className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-full transition-colors"
@@ -141,7 +139,6 @@ function ProfilePictureManager() {
                             <h3 className="text-xl font-bold text-slate-900 mb-1">Profile Photo</h3>
                             <p className="text-sm text-slate-500 mb-6">Update or remove your avatar</p>
 
-                            {/* Large Preview */}
                             <div className="w-40 h-40 mx-auto rounded-full overflow-hidden shadow-inner border-4 border-slate-50 mb-8 relative group bg-slate-100">
                                 {uploadingAvatar ? (
                                     <div className="w-full h-full flex items-center justify-center bg-slate-50">
@@ -160,15 +157,13 @@ function ProfilePictureManager() {
                                 )}
                             </div>
 
-                            {/* Actions */}
                             <div className="space-y-3">
-                                {/* Upload Button */}
                                 <div className="relative">
                                     <input 
                                         type="file" 
-                                        onChange={handleProfilePicUpload} 
+                                        onChange={onFileSelect} // 🚨 CHANGED: Calls onFileSelect
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                        accept="image/png, image/jpg, image/jpeg"
+                                        accept="image/png, image/jpg, image/jpeg, image/webp" 
                                         disabled={uploadingAvatar}
                                     />
                                     <button className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2">
@@ -177,7 +172,6 @@ function ProfilePictureManager() {
                                     </button>
                                 </div>
 
-                                {/* Remove Button */}
                                 {fileId && (
                                     <button 
                                         onClick={handleRemoveProfilePic}
@@ -189,7 +183,6 @@ function ProfilePictureManager() {
                                     </button>
                                 )}
                                 
-                                {/* Cancel */}
                                 <button 
                                     onClick={() => setIsAvatarModalOpen(false)}
                                     className="text-slate-400 text-sm hover:text-slate-600 font-medium py-2"

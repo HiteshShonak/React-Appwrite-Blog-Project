@@ -18,7 +18,7 @@ import AboutUs from './pages/AboutUs.jsx'
 import Contact from './pages/Contact.jsx'
 import FAQ from './pages/FAQ.jsx'
 import NotFound from './pages/NotFound.jsx'
-import AuthorProfile from './Components/AuthorProfile.jsx'
+import AuthorProfile from './pages/AuthorProfile.jsx'
 
 const router = createBrowserRouter([
   {path: '/',  
@@ -60,7 +60,7 @@ const router = createBrowserRouter([
   {path: "/faq",
     element: <FAQ />
   },
-  {path: "/author/:userId",
+  {path: "/author/:username",
    element: <AuthorProfile />,
   },
   {path: "*", 

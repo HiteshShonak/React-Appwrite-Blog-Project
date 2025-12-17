@@ -4,36 +4,52 @@ import { login } from '../Store/authSlice.js';
 import { useDispatch } from 'react-redux';
 import { Button, Input } from './index.js';
 import authService from '../appwrite/auth.js';
+import appwriteService from '../appwrite/config.js';
 import { useForm } from 'react-hook-form';
 
 function Signup() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
-    // 1. Get 'errors' from formState so we can show them
-    const { register, handleSubmit, formState: { errors } } = useForm();
+    
+    // 🚨 MODE: "onChange" enables real-time validation while typing
+    const { register, handleSubmit, formState: { errors } } = useForm({
+        mode: "onChange"
+    });
+    
     const [error, setError] = useState("");
 
     const createAccount = async (data) => {
         setError("");
 
-        // 2. CLEAN THE DATA
         const cleanData = {
             email: data.email.trim().toLowerCase(),
-            password: data.password, // Don't trim password
+            password: data.password,
             name: data.name
         };
 
         try {
+            // STEP A: Create Authentication Account (Email/Pass)
             const userData = await authService.createAccount(cleanData);
+            
             if (userData) {
                 const currentUser = await authService.getCurrentUser();
+                
                 if (currentUser) {
+                    // STEP B: Create Public Profile (Username)
+                    // We link this using the currentUser.$id
+                    await appwriteService.createUserProfile({
+                        userId: currentUser.$id,
+                        username: data.username.toLowerCase(),
+                        bio: `Hi! I'm ${data.name}.`
+                    });
+
+                    // STEP C: Login & Redirect
                     dispatch(login({ userData: currentUser }));
-                    // 3. REDIRECT TO DASHBOARD (Not Home)
                     navigate('/dashboard');
                 }
             }
         } catch (error) {
+            console.error("Signup Error", error);
             setError(error.message);
         }
     }
@@ -46,8 +62,7 @@ function Signup() {
     }, [error]);
 
     return (
-        <div className='relative pt-20'>
-            {/* Global Backend Error */}
+        <div className='relative pt-10'>
             {error && (
                 <div className='absolute -top-6 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4'>
                     <div className='bg-red-600 text-white px-6 py-3 rounded-lg shadow-2xl border-2 border-red-700 animate-bounce'>
@@ -61,31 +76,55 @@ function Signup() {
                 
                 <form onSubmit={handleSubmit(createAccount)} className='space-y-4 flex justify-center flex-col'>
                     
-                    {/* FULL NAME */}
+                    {/* Full Name */}
                     <div>
                         <Input
                             label="Full Name "
                             type="text"
                             placeholder="Enter Your Full Name"
-                            autoComplete="name"
                             {...register("name", { required: "Full Name is required" })}
                         />
                         {errors.name && <p className="text-red-600 text-xs mt-1 text-left">{errors.name.message}</p>}
                     </div>
 
-                    {/* EMAIL */}
+                    {/* 🚨 USERNAME FIELD */}
+                    <div>
+                        <Input
+                            label="Username "
+                            type="text"
+                            placeholder="@username"
+                            autoComplete="off"
+                            {...register("username", { 
+                                required: "Username is required",
+                                minLength: { value: 4, message: "Min 4 characters" },
+                                maxLength: { value: 20, message: "Max 20 characters" },
+                                pattern: {
+                                    value: /^[a-zA-Z0-9_.]+$/,
+                                    message: "Only letters, numbers, dots, and underscores"
+                                },
+                                // 🚨 ASYNC VALIDATION
+                                validate: async (value) => {
+                                    try {
+                                        const isAvailable = await appwriteService.isUsernameAvailable(value.toLowerCase());
+                                        return isAvailable || "Username is already taken";
+                                    } catch (error) {
+                                        return true; // Don't block on error
+                                    }
+                                }
+                            })}
+                        />
+                        {errors.username && <p className="text-red-600 text-xs mt-1 text-left">{errors.username.message}</p>}
+                    </div>
+
+                    {/* Email */}
                     <div>
                         <Input
                             label="Email "
                             type="email"
                             placeholder="Enter Your Email"
-                            autoCapitalize="none"
-                            autoCorrect="off"
-                            autoComplete="username"
                             {...register("email", {
                                 required: "Email is required",
                                 validate: {
-                                    // Improved Regex
                                     matchPattern: (value) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value) || "Invalid email address"
                                 }
                             })}
@@ -93,23 +132,17 @@ function Signup() {
                         {errors.email && <p className="text-red-600 text-xs mt-1 text-left">{errors.email.message}</p>}
                     </div>
 
-                    {/* PASSWORD */}
+                    {/* Password */}
                     <div>
                         <Input
                             label="Password "
                             type="password"
                             placeholder="Enter Your Password"
-                            autoComplete="new-password"
                             {...register("password", {
                                 required: "Password is required",
-                                // 4. FIX: Set minLength to 8 to match Appwrite
-                                minLength: {
-                                    value: 8,
-                                    message: "Password must be at least 8 characters long"
-                                }
+                                minLength: { value: 8, message: "Password must be at least 8 characters long" }
                             })}
                         />
-                        {/* Show Password Error */}
                         {errors.password && <p className="text-red-600 text-xs mt-1 text-left">{errors.password.message}</p>}
                     </div>
 
@@ -126,4 +159,4 @@ function Signup() {
     )
 }
 
-export default Signup
+export default Signup;

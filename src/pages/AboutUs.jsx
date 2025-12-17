@@ -4,7 +4,7 @@ import Logo from '../assets/Logo.png'
 
 function AboutUs() {
   return (
-    <div className='w-full min-h-screen bg-slate-50 py-12 md:py-20'>
+    <div className='w-full min-h-screen bg-slate-50 py-12 md:py-20 page-anim'>
         <Container>
             <div className="max-w-4xl mx-auto">
                 

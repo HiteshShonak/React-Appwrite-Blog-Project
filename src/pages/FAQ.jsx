@@ -7,7 +7,7 @@ const FaqItem = ({ question, answer }) => {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <div className="border-b border-slate-200 py-6">
+        <div className="border-b border-slate-200 py-6 page-anim">
             <button
                 className="flex justify-between items-center w-full text-left focus:outline-none"
                 onClick={() => setIsOpen(!isOpen)}

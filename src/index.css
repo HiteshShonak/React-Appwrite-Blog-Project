@@ -37,6 +37,59 @@ body{
     color: #ffffff;
 }
 
+/* Page Load Animation */
+@keyframes page-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(15px); /* Start slightly down */
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0); /* End in place */
+  }
+}
+
+.page-anim {
+  /* 0.4s duration, smooth easing, runs only once */
+  animation: page-enter 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+
+/* Horizontal Scrolling Animation */
+@keyframes scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-scroll {
+  animation: scroll 40s linear infinite;
+}
+
+.paused {
+  animation-play-state: paused;
+}
+
+/* Indeterminate Progress Bar Animation For Home*/
+@keyframes progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(0%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-progress-indeterminate {
+  animation: progress-indeterminate 1.5s infinite ease-in-out;
+}
+
+
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+
 .user-select-none {
     -webkit-user-select: none; /* Safari */
     -moz-user-select: none;    /* Firefox */

@@ -1,30 +1,66 @@
 import React, { useState, useEffect } from 'react'
 import appwriteService from '../appwrite/config.js'
 import { PostCard, Container } from '../Components'
+import { Query } from 'appwrite'
+// 🚨 NEW IMPORTS FOR REDUX
+import { useSelector, useDispatch } from 'react-redux';
+import { setPosts } from '../Store/postSlice'; 
 
 function AllPosts() {
-    const [posts, setPosts] = useState([]);
-    const [loading, setLoading] = useState(true);
+    // 🚨 1. Access Redux Store
+    const posts = useSelector((state) => state.posts.posts);
+    const dispatch = useDispatch();
+
+    // 🚨 2. Smart Loading State: Only load if Redux is empty
+    const [loading, setLoading] = useState(posts.length === 0);
 
     useEffect(() => {
-        setLoading(true);
-        appwriteService.getPosts().then((response) => {
-            if (response && response.documents) {
-                setPosts(response.documents);
-            }
-        }).catch((error) => {
-            console.log("Error fetching posts:", error);
-        }).finally(() => setLoading(false));
-    }, []);
+        // 🚨 3. Caching Logic: If we already have posts, don't refetch
+        if (posts.length === 0) {
+            setLoading(true);
+            
+            appwriteService.getPosts([
+                Query.orderDesc("$createdAt")
+            ]).then((response) => {
+                if (response && response.documents) {
+                    // 🚨 4. Save fetched posts to Redux
+                    dispatch(setPosts(response.documents));
+                }
+            }).catch((error) => {
+                console.log("Error fetching posts:", error);
+            }).finally(() => setLoading(false));
+        } else {
+            // Data exists in Redux -> Stop loading immediately
+            setLoading(false);
+        }
+    }, []); // Run once on mount
 
-
+    // ------------------------------------------------------------------
+    // 💀 SKELETON LOADER (Exact same styling)
+    // ------------------------------------------------------------------
     if (loading) {
         return (
-            <div className='py-8 min-h-[60vh] flex items-center justify-center'>
+            <div className='py-8 bg-slate-50 min-h-screen animate-pulse'>
                 <Container>
-                    <div className="flex flex-col items-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-                        <p className="text-gray-500 text-sm font-medium">Loading content...</p>
+                    {/* Header Skeleton */}
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-slate-200 pb-4">
+                        <div className="h-8 w-48 bg-slate-200 rounded-lg"></div>
+                        <div className="h-6 w-24 bg-slate-200 rounded-full mt-2 md:mt-0"></div>
+                    </div>
+
+                    {/* Grid Skeleton */}
+                    <div className='grid m-2 sm:m-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6'>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((item) => (
+                            <div key={item} className="bg-white rounded-xl overflow-hidden h-full border border-slate-100">
+                                {/* Image Placeholder */}
+                                <div className="aspect-video w-full bg-slate-200"></div>
+                                {/* Content Placeholder */}
+                                <div className="p-4 space-y-3">
+                                    <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+                                    <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </Container>
             </div>
@@ -32,7 +68,7 @@ function AllPosts() {
     }
 
     return (
-        <div className='py-8 bg-slate-50 min-h-screen text-gray-800'>
+        <div className='py-8 bg-slate-50 min-h-screen text-gray-800 page-anim'>
             <Container>
                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-slate-200 pb-4">
                     <h1 className='text-2xl md:text-3xl font-bold text-slate-800 tracking-tight'>
@@ -56,12 +92,8 @@ function AllPosts() {
                         </p>
                     </div>
                 ) : (
-                    /* GRID UPDATES:
-                       - md:grid-cols-2 (Tablets)
-                       - lg:grid-cols-3 (Laptops)
-                       - xl:grid-cols-4 (Desktops -> This makes cards smaller)
-                    */
-                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
+                    /* GRID LAYOUT (Exact same styling) */
+                    <div className='grid m-2 sm:m-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6'>
                         {posts.map((post) => (
                             <div key={post.$id} className="h-full">
                                 <PostCard {...post} />

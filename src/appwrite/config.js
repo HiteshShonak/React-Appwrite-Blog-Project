@@ -85,12 +85,12 @@ export class Service {
     }
 
     // Retrieves a list of posts (defaults to active status)
-    async getPosts(queries = [Query.equal("Status", "active")]) {
+    async getPosts(queries = [Query.equal("Status", "active"),Query.orderDesc("$createdAt")]) {
         try {
             return await this.databases.listDocuments(
                 conf.appwriteDatabaseId,
                 conf.appwriteCollectionId,
-                queries,
+                queries, 
             );
         } catch (error) {
             console.log("Appwrite Service :: getPosts :: error", error);
@@ -393,8 +393,146 @@ export class Service {
             return false;
         }
     }
+
+    // Hybrid Trending Logic (Time Window + Scoring)
+    async getTrendingPosts() {
+        try {
+            // 1. Define Time Window (Last 7 Days - tightened for freshness)
+            const date = new Date();
+            date.setDate(date.getDate() - 10);
+
+            // 2. Fetch Candidate Posts
+            // Reduced limit to 40 to prevent hitting rate limits when fetching ratings
+            const response = await this.databases.listDocuments(
+                conf.appwriteDatabaseId,
+                conf.appwriteCollectionId,
+                [
+                    Query.equal("Status", "active"),
+                    Query.greaterThanEqual("$createdAt", date.toISOString()),
+                    Query.limit(40) 
+                ]
+            );
+
+            if (!response || !response.documents) return [];
+
+            // 3. Fetch Ratings & Calculate Score for each post
+            const scoredPosts = await Promise.all(response.documents.map(async (post) => {
+                const views = post.Views || 0;
+                
+                // A. Fetch Rating for this specific post
+                // We use 'this.getPostRatings' assuming it exists in this class
+                let averageRating = 0;
+                try {
+                    const ratingData = await this.getPostRatings(post.$id);
+                    if (ratingData && ratingData.documents.length > 0) {
+                        const totalStars = ratingData.documents.reduce((acc, curr) => acc + curr.stars, 0);
+                        averageRating = totalStars / ratingData.documents.length;
+                    }
+                } catch (e) {
+                    // If rating fetch fails, assume neutral
+                    averageRating = 0;
+                }
+
+                // B. Time Decay
+                const publishedDate = new Date(post.$createdAt);
+                const now = new Date();
+                const hoursSincePublished = Math.max(0, (now - publishedDate) / (1000 * 60 * 60));
+
+                // C. 🧮 NEW FORMULA: (Views * Quality) / Time
+                
+                // Quality Multiplier:
+                // No rating = 1x (Neutral)
+                // 5 Stars   = 2x (Boost)
+                // 1 Star    = 0.5x (Penalty)
+                // Formula: 1 + ((Rating - 3) * 0.25) -> range 0.5 to 1.5 roughly, normalized below:
+                
+                let qualityMultiplier = 1;
+                if (averageRating > 0) {
+                    // 5 stars becomes 2.5 multiplier, 1 star becomes 0.5
+                    qualityMultiplier = 0.5 + (averageRating * 0.4); 
+                }
+
+                // Base Gravity: Views / (Time + 2)^1.5
+                const gravity = views / Math.pow(hoursSincePublished + 2, 1.5);
+                
+                // Final Score
+                const finalScore = gravity * qualityMultiplier;
+
+                return { ...post, trendScore: finalScore };
+            }));
+
+            // 4. Sort Descending
+            scoredPosts.sort((a, b) => b.trendScore - a.trendScore);
+
+            // 5. Return Top 6
+            return scoredPosts.slice(0, 6);
+
+        } catch (error) {
+            console.log("Appwrite Service :: getTrendingPosts :: error", error);
+            return [];
+        }
+    }
     
-    
+
+    // ============================================================
+    // 👤 USER PROFILE SERVICES (Logic Reset)
+    // ============================================================
+
+    // 1. Create Profile (Run this ONCE immediately after Signup)
+    async createUserProfile({ userId, username, bio = "", imageId = null }) {
+        try {
+            return await this.databases.createDocument(
+                conf.appwriteDatabaseId,
+                conf.appwriteUserProfilesCollectionId, // Ensure this var is in conf.js
+                userId, // 🚨 We use Auth ID as Document ID for 1:1 linking
+                {
+                    UserId: userId,
+                    Username: username,         // Capital U (Matches Schema)
+                    Bio: bio,                   // Capital B
+                    ProfileImageFileId: imageId // Capital P
+                }
+            );
+        } catch (error) {
+            console.log("Appwrite Service :: createUserProfile :: error", error);
+            throw error; // Throwing ensures Signup knows if this failed
+        }
+    }
+
+    // 2. Check Availability (Used for Real-time validation)
+    async isUsernameAvailable(username) {
+        try {
+            const queries = [Query.equal("Username", username)]; // Capital U
+            const result = await this.databases.listDocuments(
+                conf.appwriteDatabaseId,
+                conf.appwriteUserProfilesCollectionId,
+                queries
+            );
+            // If 0 documents found, it means the username is FREE to take.
+            return result.documents.length === 0; 
+        } catch (error) {
+            console.log("Appwrite Service :: isUsernameAvailable :: error", error);
+            // 🚨 SAFETY: If network fails, return TRUE so we don't block the user.
+            return true; 
+        }
+    }
+
+    // 3. Get Profile by Username (For Public Profile Pages)
+    async getProfileByUsername(username) {
+        try {
+            const queries = [Query.equal("Username", username)]; // Capital U
+            const result = await this.databases.listDocuments(
+                conf.appwriteDatabaseId,
+                conf.appwriteUserProfilesCollectionId,
+                queries
+            );
+            return result.documents[0]; // Return the profile doc
+        } catch (error) {
+            console.log("Appwrite Service :: getProfileByUsername :: error", error);
+            return false;
+        }
+    }
+
+
 }
 
 const appwriteService = new Service();

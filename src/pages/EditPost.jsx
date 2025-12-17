@@ -23,7 +23,7 @@ function EditPost() {
     }, [slug, navigate]);
 
   return post ? (
-    <div className='py-12 bg-slate-50 min-h-screen'>
+    <div className='py-12 bg-slate-50 min-h-screen page-anim'>
         <Container>
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
