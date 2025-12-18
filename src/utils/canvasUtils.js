@@ -7,18 +7,12 @@ export const createImage = (url) =>
     image.src = url;
   });
 
-/**
- * This function takes the original image and the crop area
- * and draws it onto a new canvas to create the new file.
- */
 export async function getCroppedImg(imageSrc, pixelCrop) {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
 
-  if (!ctx) {
-    return null;
-  }
+  if (!ctx) return null;
 
   // Set canvas size to the cropped size
   canvas.width = pixelCrop.width;
@@ -37,15 +31,19 @@ export async function getCroppedImg(imageSrc, pixelCrop) {
     pixelCrop.height
   );
 
-  // Return as a Blob (file object)
   return new Promise((resolve, reject) => {
+    // 🚨 OPTIMIZATION: Use quality 1.0 (Max) so we feed high-quality data to your compressor
     canvas.toBlob((blob) => {
       if (!blob) {
         reject(new Error('Canvas is empty'));
         return;
       }
-      blob.name = 'cropped.jpg'; // We can name it whatever, compression handles the rest
+      
+      // Cleanup canvas memory to prevent lag
+      canvas.width = 0;
+      canvas.height = 0;
+      
       resolve(blob);
-    }, 'image/jpeg');
+    }, 'image/jpeg', 1.0); 
   });
 }

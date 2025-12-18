@@ -17,15 +17,15 @@ function PostCard({$id, Title, featuredImage}) {
   }, [$id]);
 
   return (
-    <Link to={`/post/${$id}`} className="group block h-full">
-        <div className='bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg border border-gray-100 hover:border-gray-200 transition-all duration-300 h-full flex flex-col'>
+    <Link to={`/post/${$id}`} className="gpu-accelerate group block h-full">
+        <div className='gpu-accelerate bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg border border-gray-100 hover:border-gray-200 transition-all duration-300 h-full flex flex-col'>
             
             <div className='relative w-full aspect-video overflow-hidden bg-gray-50'>
                 {featuredImage ? 
                     (<img 
                         src={appwriteService.getFileView(featuredImage)}
                         alt={Title}
-                        className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out'
+                        className='gpu-accelerate w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out'
                         loading="lazy"
                     />) : (
                     <div className="flex items-center justify-center h-full text-gray-300">
@@ -35,7 +35,7 @@ function PostCard({$id, Title, featuredImage}) {
                 }
                 
                 {/* Fixed gradient syntax */}
-                <div className="absolute inset-0 bg-linear-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="gpu-accelerate absolute inset-0 bg-linear-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
                 {/* 🚨 RATING BADGE (Top Right on Image) */}
                 {rating && (

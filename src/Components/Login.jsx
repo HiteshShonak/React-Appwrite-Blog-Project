@@ -48,13 +48,13 @@ function Login() {
     return (
         <div className='relative pt-20'>
             {error && (
-                <div className='absolute top-0 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4'>
-                    <div className='bg-red-600 text-white px-6 py-3 rounded-lg shadow-2xl border-2 border-red-700 animate-bounce'>
+                <div className='gpu-accelerate absolute top-0 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4'>
+                    <div className='gpu-accelerate bg-red-600 text-white px-6 py-3 rounded-lg shadow-2xl border-2 border-red-700 animate-bounce'>
                         <p className='font-semibold text-center text-sm'>{error}</p>
                     </div>
                 </div>
             )}
-            <div className='max-w-md mx-auto p-6 border border-gray-300 rounded-lg shadow-lg bg-white text-gray-800'>
+            <div className='gpu-accelerate max-w-md mx-auto p-6 border border-gray-300 rounded-lg shadow-lg bg-white text-gray-800'>
                 <h2 className='text-2xl font-bold mb-6 text-center text-gray-800'>Login to Your Account</h2>
                 <form onSubmit={handleSubmit(login)} className='space-y-4 flex flex-col justify-center'>
                     <Input
@@ -81,7 +81,7 @@ function Login() {
                     <Button type="submit" className="bg-red-600 text-white hover:bg-red-700 active:scale-95 transition-all font-semibold">Login</Button>
                 </form>
                 <p className='mt-4 text-center text-gray-700'>
-                    Don't have an account? <Link to="/signup" className='text-blue-500 hover:text-blue-600'>Signup here</Link>
+                    Don't have an account? <Link to="/signup" className='interactive text-blue-500 hover:text-blue-600'>Signup here</Link>
                 </p>
             </div>
         </div>

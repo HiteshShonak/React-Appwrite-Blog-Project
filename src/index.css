@@ -31,123 +31,179 @@
   --padding-footer: clamp(240px, 30vw, 340px);
 }
 
-body{
-    margin: 0px;
-    padding: 0px;
-    color: #ffffff;
+body {
+  margin: 0;
+  padding: 0;
+  color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-
-
-/* Page Load Animation */
+/* Page load animation - Smoother with better easing */
 @keyframes page-enter {
   0% {
     opacity: 0;
-    transform: translateY(15px); /* Start slightly down */
+    transform: translate3d(0, 20px, 0);
   }
   100% {
     opacity: 1;
-    transform: translateY(0); /* End in place */
+    transform: translate3d(0, 0, 0);
   }
 }
 
 .page-anim {
-  /* 0.4s duration, smooth easing, runs only once */
-  animation: page-enter 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  animation: page-enter 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
-
-/* Horizontal Scrolling Animation */
+/* Horizontal scrolling animation - Smoother timing */
 @keyframes scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% { 
+    transform: translate3d(0, 0, 0); 
+  }
+  100% { 
+    transform: translate3d(-50%, 0, 0); 
+  }
 }
 
 .animate-scroll {
   animation: scroll 40s linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 .paused {
   animation-play-state: paused;
 }
 
-/* Indeterminate Progress Bar Animation For Home*/
+/* Indeterminate progress bar - Smoother motion */
 @keyframes progress-indeterminate {
-  0% { transform: translateX(-100%); }
-  50% { transform: translateX(0%); }
-  100% { transform: translateX(100%); }
+  0% { 
+    transform: translate3d(-100%, 0, 0) scaleX(0.3);
+  }
+  40% { 
+    transform: translate3d(0%, 0, 0) scaleX(0.8);
+  }
+  100% { 
+    transform: translate3d(100%, 0, 0) scaleX(0.3);
+  }
 }
 
 .animate-progress-indeterminate {
-  animation: progress-indeterminate 1.5s infinite ease-in-out;
+  animation: progress-indeterminate 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform;
 }
 
-
+/* Fade in up animation - Smoother easing */
 @keyframes fade-in-up {
-  0% { opacity: 0; transform: translateY(10px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% { 
+    opacity: 0; 
+    transform: translate3d(0, 15px, 0);
+  }
+  100% { 
+    opacity: 1; 
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 .animate-fade-in-up {
-  animation: fade-in-up 0.8s ease-out forwards;
+  animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
 
+/* User selection controls */
 .user-select-none {
-    -webkit-user-select: none; /* Safari */
-    -moz-user-select: none;    /* Firefox */
-    -ms-user-select: none;     /* IE10+/Edge */
-    user-select: none;         /* Standard */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .user-drag-none {
-    -webkit-user-drag: none; /* Safari and Chrome */
-    user-drag: none;         /* Standard */
+  -webkit-user-drag: none;
+  user-drag: none;
 }
 
-
+/* Header with enhanced glassmorphism - smoother transitions */
 .header {
-    background-color: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-
+/* FAQ collapse animation - extra smooth */
 .faq-answer-collapse {
-    
-    height: 0;
-    opacity: 0;
-    margin-top: 0;
-    padding-top: 0; 
-    padding-bottom: 0; 
-    
-    transition: 
-        height 0.7s cubic-bezier(0.4, 0, 0.2, 1), 
-        opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1),
-        margin-top 0.7s cubic-bezier(0.4, 0, 0.2, 1),
-        padding-top 0.7s cubic-bezier(0.4, 0, 0.2, 1),
-        padding-bottom 0.7s cubic-bezier(0.4, 0, 0.2, 1);
-    
-    overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+  transform: translate3d(0, -10px, 0);
+  
+  transition: 
+    max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1) 0.05s,
+    margin-top 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.45s cubic-bezier(0.4, 0, 0.2, 1) 0.05s;
+  
+  will-change: max-height, opacity, transform;
 }
 
 .faq-answer-expanded {
-   
-    height: auto; 
-    opacity: 1;
-    
-    
-    margin-top: 1rem;     
-    padding-top: 0; 
-    padding-bottom: 0.25rem;
+  max-height: 500px;
+  opacity: 1;
+  margin-top: 1rem;
+  padding-top: 0;
+  padding-bottom: 0.25rem;
+  transform: translate3d(0, 0, 0);
 }
 
-
+/* FAQ arrow rotation - smoother timing */
 .faq-arrow {
-    transition: transform 0.3s ease-in-out;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+              color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
 }
 
 .faq-arrow-rotated {
-    transform: rotate(180deg);
-    color: #4f46e5;
+  transform: rotate(180deg);
+  color: #4f46e5;
+}
+
+/* Smooth transitions for interactive elements */
+button, a, .interactive {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:active, .interactive:active {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Reduced motion support for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .page-anim,
+  .animate-scroll,
+  .animate-progress-indeterminate,
+  .animate-fade-in-up {
+    animation: none !important;
+  }
+}
+
+/* Hardware acceleration hint */
+.gpu-accelerate {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
 }

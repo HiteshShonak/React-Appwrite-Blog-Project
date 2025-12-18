@@ -80,7 +80,7 @@ function Dashboard() {
 
                 <Container>
                     <div className="flex flex-col items-center justify-center relative z-10">
-                        <div className="bg-white p-6 sm:p-10 md:p-14 rounded-4xl shadow-2xl border border-slate-100 max-w-2xl w-full text-center relative overflow-hidden">
+                        <div className="gpu-accelerate bg-white p-6 sm:p-10 md:p-14 rounded-4xl shadow-2xl border border-slate-100 max-w-2xl w-full text-center relative overflow-hidden">
                             
                             <div className="absolute top-0 left-0 w-full h-2 bg-linear-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
 
@@ -230,7 +230,7 @@ function Dashboard() {
 
             <Container>
                 {/* IDENTITY SECTION */}
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 mb-6 sm:mb-8 flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4">
+                <div className="gpu-accelerate bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 mb-6 sm:mb-8 flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4">
                     
                     <div className="flex items-center gap-3 sm:gap-5 w-full md:w-auto">
                         <div className="shrink-0">
@@ -254,7 +254,7 @@ function Dashboard() {
                     <div className="flex items-center gap-2 sm:gap-3 shrink-0 w-full md:w-auto justify-end">
                         <button 
                             onClick={openBioModal}
-                            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 active:bg-indigo-200 hover:scale-105 active:scale-95 transition-all duration-200 text-xs sm:text-sm font-semibold h-8 sm:h-10 shadow-sm hover:shadow-md"
+                            className="interactive gpu-accelerate flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 active:bg-indigo-200 hover:scale-105 active:scale-95 transition-all duration-200 text-xs sm:text-sm font-semibold h-8 sm:h-10 shadow-sm hover:shadow-md"
                         >
                             <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             <span>Edit Bio</span>
@@ -284,7 +284,7 @@ function Dashboard() {
                         { icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", label: "Published", value: activePosts.length, color: "emerald" },
                         { icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z", label: "Drafts", value: draftPosts.length, color: "amber", span: "col-span-2 md:col-span-1" }
                     ].map((stat, index) => (
-                        <div key={index} className={`bg-white p-3 sm:p-4 md:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-100 flex items-center gap-2 sm:gap-3 md:gap-4 ${stat.span || ''}`}>
+                        <div key={index} className={`gpu-accelerate bg-white p-3 sm:p-4 md:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-100 flex items-center gap-2 sm:gap-3 md:gap-4 ${stat.span || ''}`}>
                             <div className={`p-2 sm:p-3 bg-${stat.color}-50 text-${stat.color}-600 rounded-lg sm:rounded-xl shrink-0`}>
                                 <svg className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={stat.icon} /></svg>
                             </div>
@@ -323,7 +323,7 @@ function Dashboard() {
                             Published Articles
                         </h2>
                         {activePosts.length === 0 ? (
-                            <div className="bg-white rounded-xl p-8 sm:p-12 text-center border-2 border-slate-100 border-dashed flex flex-col items-center">
+                            <div className="gpu-accelerate bg-white rounded-xl p-8 sm:p-12 text-center border-2 border-slate-100 border-dashed flex flex-col items-center">
                                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-50 rounded-full flex items-center justify-center mb-3 sm:mb-4 text-slate-300">
                                     <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                 </div>

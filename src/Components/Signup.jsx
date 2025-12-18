@@ -64,14 +64,14 @@ function Signup() {
     return (
         <div className='relative pt-10'>
             {error && (
-                <div className='absolute -top-6 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4'>
-                    <div className='bg-red-600 text-white px-6 py-3 rounded-lg shadow-2xl border-2 border-red-700 animate-bounce'>
+                <div className='gpu-accelerate absolute -top-6 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4'>
+                    <div className='gpu-accelerate bg-red-600 text-white px-6 py-3 rounded-lg shadow-2xl border-2 border-red-700 animate-bounce'>
                         <p className='font-semibold text-center text-sm'>{error}</p>
                     </div>
                 </div>
             )}
             
-            <div className='max-w-md mx-auto p-6 border border-gray-300 rounded-lg shadow-lg bg-white text-gray-800'>
+            <div className='gpu-accelerate max-w-md mx-auto p-6 border border-gray-300 rounded-lg shadow-lg bg-white text-gray-800'>
                 <h2 className='text-2xl font-bold mb-6 text-center text-gray-800'>Create a New Account</h2>
                 
                 <form onSubmit={handleSubmit(createAccount)} className='space-y-4 flex justify-center flex-col'>
@@ -152,7 +152,7 @@ function Signup() {
                 </form>
 
                 <p className='mt-4 text-center text-gray-700'>
-                    Already have an account? <Link to="/login" className='text-blue-500 hover:text-blue-600'>Login here</Link>
+                    Already have an account? <Link to="/login" className='interactive text-blue-500 hover:text-blue-600'>Login here</Link>
                 </p>
             </div>
         </div>

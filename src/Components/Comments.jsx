@@ -68,7 +68,7 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
             
             <Link 
                 to={authorUsername ? `/author/${authorUsername}` : '#'} 
-                className="shrink-0 w-10 h-10 rounded-full bg-white text-indigo-600 flex items-center justify-center font-bold text-sm border border-indigo-100 hover:ring-4 hover:ring-indigo-50 transition-all shadow-sm overflow-hidden"
+                className="interactive gpu-accelerate shrink-0 w-10 h-10 rounded-full bg-white text-indigo-600 flex items-center justify-center font-bold text-sm border border-indigo-100 hover:ring-4 hover:ring-indigo-50 transition-all shadow-sm overflow-hidden"
             >
                 {authorAvatarUrl ? (
                     <img 
@@ -85,7 +85,7 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
                 <div className="flex items-center gap-1 flex-wrap">
                     <Link 
                         to={authorUsername ? `/author/${authorUsername}` : '#'} 
-                        className="font-bold text-slate-800 text-sm hover:text-indigo-600 hover:underline transition-colors"
+                        className="interactive font-bold text-slate-800 text-sm hover:text-indigo-600 hover:underline transition-colors"
                     >
                         {comment.authorName}
                     </Link>
@@ -119,7 +119,7 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
             <div className="shrink-0 self-center pl-2">
                 <button 
                     onClick={handleLike}
-                    className={`flex flex-col items-center gap-0.5 transition-all transform active:scale-90 ${isLiked ? 'text-rose-500' : 'text-slate-300 hover:text-rose-400'}`}
+                    className={`interactive gpu-accelerate flex flex-col items-center gap-0.5 transition-all transform active:scale-90 ${isLiked ? 'text-rose-500' : 'text-slate-300 hover:text-rose-400'}`}
                     disabled={!userData || isTemp}
                     aria-label={isLiked ? 'Unlike comment' : 'Like comment'}
                 >
@@ -259,12 +259,12 @@ function Comments({ postId, postAuthorId }) {
             {/* Delete confirmation modal */}
             {deleteCommentId && createPortal(
                 <div 
-                    className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+                    className="gpu-accelerate fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
                     style={{ animation: 'fadeIn 0.2s ease-out' }}
                     onClick={closeModal}
                 >
                     <div 
-                        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 border border-slate-100"
+                        className="gpu-accelerate bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 border border-slate-100"
                         style={{ animation: 'scaleIn 0.3s ease-out' }}
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -326,9 +326,9 @@ function Comments({ postId, postAuthorId }) {
                     </div>
                 </form>
             ) : (
-                <div className="bg-white rounded-2xl p-8 text-center mb-10 border border-slate-200 border-dashed">
+                <div className="gpu-accelerate bg-white rounded-2xl p-8 text-center mb-10 border border-slate-200 border-dashed">
                     <p className="text-slate-500 text-sm">
-                        <Link to="/login" className="text-indigo-600 font-bold hover:underline">Log In</Link> to join the conversation.
+                        <Link to="/login" className="interactive text-indigo-600 font-bold hover:underline">Log In</Link> to join the conversation.
                     </p>
                 </div>
             )}

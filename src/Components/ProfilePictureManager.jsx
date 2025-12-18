@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { createPortal } from 'react-dom';
 import appwriteService from '../appwrite/config';
 import { compressImage } from '../utils/compressImage';
-import AvatarCropper from './AvatarCropper';
+import AvatarCropper from './ImageCropper';
 
 function ProfilePictureManager({ onProfileUpdate }) {
     const userData = useSelector((state) => state.auth.userData);
@@ -107,7 +107,7 @@ function ProfilePictureManager({ onProfileUpdate }) {
             {/* Avatar display with edit trigger */}
             <div 
                 onClick={() => setIsAvatarModalOpen(true)}
-                className="relative group w-16 h-16 rounded-full overflow-hidden border border-slate-200 shrink-0 cursor-pointer shadow-sm hover:shadow-md transition-all"
+                className="interactive gpu-accelerate relative group w-16 h-16 rounded-full overflow-hidden border border-slate-200 shrink-0 cursor-pointer shadow-sm hover:shadow-md transition-all"
             >
                 {fileId ? (
                     <img 
@@ -120,7 +120,7 @@ function ProfilePictureManager({ onProfileUpdate }) {
                         {getInitials(userData?.name)}
                     </div>
                 )}
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                <div className="gpu-accelerate absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
                     <svg className="w-6 h-6 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                 </div>
             </div>
@@ -128,16 +128,16 @@ function ProfilePictureManager({ onProfileUpdate }) {
             {/* Profile picture management modal */}
             {isAvatarModalOpen && !selectedImageForCrop && createPortal(
                 <div 
-                    className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+                    className="gpu-accelerate fixed inset-0 z-[9999] flex items-center justify-center p-4"
                     style={{ animation: 'fadeIn 0.2s ease-out' }}
                 >
                     <div 
-                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                        className="gpu-accelerate absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
                         onClick={() => setIsAvatarModalOpen(false)}
                     />
 
                     <div 
-                        className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 overflow-hidden"
+                        className="gpu-accelerate relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 overflow-hidden"
                         style={{ animation: 'scaleIn 0.3s ease-out' }}
                         onClick={(e) => e.stopPropagation()}
                     >

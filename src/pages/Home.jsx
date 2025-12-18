@@ -13,10 +13,10 @@ const TrendingCard = memo(({ post, onClick }) => {
 
     return (
         <div 
-            className="w-72 md:w-80 mx-5 transform transition-transform duration-500 hover:scale-105 cursor-pointer text-left shadow-sm hover:shadow-xl rounded-xl z-10"
+            className="gpu-accelerate interactive w-72 md:w-80 mx-5 transform transition-transform duration-500 hover:scale-105 cursor-pointer text-left shadow-sm hover:shadow-xl rounded-xl z-10"
             onClick={(e) => onClick(e, post.$id)}
         >
-            <div className="pointer-events-none bg-white rounded-xl h-full overflow-hidden border border-slate-100 relative group"> 
+            <div className="gpu-accelerate pointer-events-none bg-white rounded-xl h-full overflow-hidden border border-slate-100 relative group"> 
                 
                 <div className='w-full h-40 bg-slate-200 relative'>
                     <img 
@@ -35,7 +35,7 @@ const TrendingCard = memo(({ post, onClick }) => {
                     )}
                 </div>
 
-                <div className='p-4'>
+                <div className='p-3'>
                     <h3 className='font-bold text-slate-800 truncate text-sm md:text-base'>{post.Title}</h3>
                 </div>
             </div>
@@ -134,7 +134,7 @@ function Home() {
     // Loading screen
     if (loading) {
         return (
-            <div className="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center overflow-hidden px-2 sm:px-4">
+            <div className="gpu-accelerate fixed inset-0 bg-white z-50 flex flex-col items-center justify-center overflow-hidden px-2 sm:px-4">
                 <div className="absolute inset-0 z-0 opacity-[0.4]" 
                      style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '32px 32px' }}>
                 </div>
@@ -180,7 +180,7 @@ function Home() {
             <Container>
                 <div className="flex flex-col items-center justify-center py-10 md:py-20 text-center max-w-7xl mx-auto">
                     
-                    <div className="mb-6 p-3 bg-blue-50 rounded-2xl inline-block animate-bounce">
+                    <div className="gpu-accelerate mb-6 p-3 bg-blue-50 rounded-2xl inline-block animate-bounce">
                         <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
                         </svg>
@@ -194,7 +194,7 @@ function Home() {
                     </p>
 
                     {/* Trending posts carousel */}
-                    <div className="w-screen my-12 mt-6 overflow-hidden bg-white/60 border-y border-slate-200 pt-4 pb-12 backdrop-blur-sm group relative">
+                    <div className="gpu-accelerate w-screen my-12 mt-6 overflow-hidden bg-white/60 border-y border-slate-200 pt-4 pb-12 backdrop-blur-sm group relative">
                         
                         <div className="text-center mb-8 relative z-30">
                             <span className="bg-slate-900 text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg">

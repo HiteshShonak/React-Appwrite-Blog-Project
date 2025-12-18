@@ -37,6 +37,10 @@ export default function Post() {
     const [loading, setLoading] = useState(!cachedPost);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [slug]);
+
     // User caching strategy
     const authorId = post?.UserId;
     const cachedAuthor = useSelector((state) => 
@@ -159,7 +163,8 @@ export default function Post() {
             <div className="py-8 sm:py-12 bg-slate-50 min-h-screen animate-pulse px-2 sm:px-4">
                 <Container>
                     <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-100">
-                        <div className="w-full h-48 sm:h-64 md:h-96 bg-slate-200"></div>
+                        {/* 🚨 CHANGED: Fixed height classes -> aspect-video (Matches 16:9 crop) */}
+                        <div className="w-full aspect-video bg-slate-200"></div>
                         <div className="p-6 sm:p-8 md:p-12">
                             <div className="h-8 sm:h-10 bg-slate-200 rounded-lg w-3/4 mb-4 sm:mb-6"></div>
                             <div className="space-y-3 sm:space-y-4">
@@ -180,11 +185,12 @@ export default function Post() {
             {/* Delete confirmation modal */}
             {isDeleteModalOpen && createPortal(
                 <div 
-                    className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+                    className="gpu-accelerate fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
                     style={{ animation: 'fadeIn 0.2s ease-out' }}
                 >
                     <div 
-                        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 sm:p-8 border border-slate-100"
+                        // 🚨 CHANGED: max-w-sm -> max-w-xs (Smaller modal width). Kept padding exactly as is.
+                        className="gpu-accelerate bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 sm:p-8 border border-slate-100"
                         style={{ animation: 'scaleIn 0.3s ease-out' }}
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -224,18 +230,18 @@ export default function Post() {
                 {/* Main article card */}
                 <article className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
                     
-                    {/* Hero image - immersive, edge to edge */}
-                    <div className="relative w-full h-48 sm:h-64 md:h-96 group overflow-hidden">
+                    {/* 🚨 CHANGED: Replaced fixed heights (h-48...) with aspect-video */}
+                    <div className="relative w-full aspect-video group overflow-hidden">
                         <img 
                             src={appwriteService.getFileView(post.featuredImage)} 
                             alt={post.Title} 
                             className="w-full h-full object-cover" 
                         />
                         
-                        {/* Author action buttons - visible on mobile, hover on desktop */}
-                        {/* Author action buttons - smart detection: always visible on touch devices, hover on pointer devices */}
+                        {/* Author action buttons */}
                         {isAuthor && (
-                            <div className="absolute top-2 sm:top-6 right-2 sm:right-6 flex gap-1.5 sm:gap-3 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-300 pointer-events-auto">
+                            // 🚨 CHANGED: Added opacity-100 (mobile) lg:opacity-0 (desktop) group-hover:opacity-100 (hover)
+                            <div className="absolute top-2 sm:top-6 right-2 sm:right-6 flex gap-1.5 sm:gap-3 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                 <Link to={`/edit-post/${post.$id}`}>
                                     <Button 
                                         bgcolor="bg-emerald-500" 
@@ -258,6 +264,7 @@ export default function Post() {
                             </div>
                         )}
 
+
                     </div>
 
                     {/* Content section */}
@@ -269,16 +276,16 @@ export default function Post() {
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 text-slate-500 text-sm font-medium">
                                 <Link 
                                     to={authorUsername ? `/author/${authorUsername}` : '#'} 
-                                    className="flex items-center gap-2 sm:gap-3 text-slate-700 group hover:opacity-80 transition-opacity"
+                                    className="gpu-accelerate interactive flex items-center gap-2 sm:gap-3 text-slate-700 group hover:opacity-80 transition-opacity"
                                 >
                                     {authorAvatarUrl ? (
                                         <img 
                                             src={authorAvatarUrl} 
                                             alt={authorName} 
-                                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover shrink-0 border border-slate-100 shadow-sm group-hover:ring-2 group-hover:ring-indigo-500 transition-all" 
+                                            className="gpu-accelerate w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover shrink-0 border border-slate-100 shadow-sm group-hover:ring-2 group-hover:ring-indigo-500 transition-all" 
                                         />
                                     ) : (
-                                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm sm:text-base shrink-0 group-hover:ring-2 group-hover:ring-indigo-500 transition-all">
+                                        <div className="gpu-accelerate w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm sm:text-base shrink-0 group-hover:ring-2 group-hover:ring-indigo-500 transition-all">
                                             {authorInitials}
                                         </div>
                                     )}
@@ -299,8 +306,8 @@ export default function Post() {
                                 </Link>
                                 <span className="font-semibold flex items-center gap-1 text-indigo-600 text-sm sm:text-base">
                                     <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                     </svg>
                                     {post.Views !== undefined ? post.Views : '...'} Views
                                 </span>

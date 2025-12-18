@@ -10,7 +10,7 @@ function Button({
     onClick,
     ...props
 }) {
-    const defaultClasses = 'px-6 py-2.5 rounded-lg font-semibold shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed';
+    const defaultClasses = 'gpu-accelerate px-6 py-2.5 rounded-lg font-semibold shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed';
     
     return (
         <button 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Container } from '../Components/index.js';
 import { Link } from 'react-router-dom';
 
@@ -6,10 +6,14 @@ import { Link } from 'react-router-dom';
 const FaqItem = ({ question, answer }) => {
     const [isOpen, setIsOpen] = useState(false);
 
+    useEffect(() => {
+                    window.scrollTo(0, 0);
+                }, []);
+
     return (
-        <div className="border-b border-slate-200 py-6 page-anim">
+        <div className="gpu-accelerate border-b border-slate-200 py-6 page-anim">
             <button
-                className="flex justify-between items-center w-full text-left focus:outline-none"
+                className="interactive flex justify-between items-center w-full text-left focus:outline-none"
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <span className="text-lg font-semibold text-slate-800">
@@ -17,7 +21,7 @@ const FaqItem = ({ question, answer }) => {
                 </span>
                 <span className="text-slate-500">
                     <svg 
-                        className={`w-6 h-6 faq-arrow ${isOpen ? 'faq-arrow-rotated' : ''}`} 
+                        className={`gpu-accelerate w-6 h-6 faq-arrow ${isOpen ? 'faq-arrow-rotated' : ''}`} 
                         fill="none" stroke="currentColor" viewBox="0 0 24 24"
                     >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -25,7 +29,7 @@ const FaqItem = ({ question, answer }) => {
                 </span>
             </button>
             
-            <div className={`faq-answer-collapse ${isOpen ? 'faq-answer-expanded' : ''}`}>
+            <div className={`gpu-accelerate faq-answer-collapse ${isOpen ? 'faq-answer-expanded' : ''}`}>
                 <div className="text-slate-600 leading-relaxed pr-8">
                     {answer}
                 </div>
@@ -49,7 +53,7 @@ function FAQ() {
                 {
                     q: "I forgot my password. How can I reset it?",
                     a: <>
-                        For security reasons, you cannot reset your password directly on this page. Please contact support via the <Link to="/contact" className="text-indigo-600 font-semibold underline">Contact</Link> page to assist you with resetting your password.
+                        For security reasons, you cannot reset your password directly on this page. Please contact support via the <Link to="/contact" className="interactive text-indigo-600 font-semibold underline">Contact</Link> page to assist you with resetting your password.
                     </>
                 },
                 {
@@ -124,7 +128,7 @@ function FAQ() {
                     </header>
 
                     {/* FAQ sections */}
-                    <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8 md:p-12 space-y-8">
+                    <div className="gpu-accelerate bg-white rounded-3xl shadow-xl border border-slate-100 p-8 md:p-12 space-y-8">
                         {faqData.map((section, index) => (
                             <section key={index} className={index > 0 ? "pt-8 border-t border-slate-100" : ""}>
                                 <h2 className="text-2xl font-bold text-indigo-600 mb-6 flex items-center gap-3">
@@ -148,7 +152,7 @@ function FAQ() {
                     </div>
 
                     {/* Contact support CTA */}
-                    <div className="mt-12 text-center bg-indigo-50 p-8 rounded-2xl border border-indigo-200">
+                    <div className="gpu-accelerate mt-12 text-center bg-indigo-50 p-8 rounded-2xl border border-indigo-200">
                         <p className="text-xl font-semibold text-indigo-700 mb-4">
                             Still need help?
                         </p>

@@ -156,7 +156,7 @@ function Rating({ postId, postAuthorId }) {
                         </div>
                     ) : (
                         <>
-                            <div className="flex items-center gap-1 bg-white px-4 py-2 rounded-full border border-slate-200 shadow-sm">
+                            <div className="gpu-accelerate flex items-center gap-1 bg-white px-4 py-2 rounded-full border border-slate-200 shadow-sm">
                                 {[1, 2, 3, 4, 5].map((star) => (
                                     <button
                                         key={star}
@@ -164,7 +164,7 @@ function Rating({ postId, postAuthorId }) {
                                         onClick={() => handleRate(star)}
                                         onMouseEnter={() => setHover(star)}
                                         onMouseLeave={() => setHover(0)}
-                                        className="transition-transform hover:scale-125 focus:outline-none disabled:cursor-not-allowed"
+                                        className="interactive gpu-accelerate transition-transform hover:scale-125 focus:outline-none disabled:cursor-not-allowed"
                                         title={userData ? `Rate ${star} stars` : "Login to rate"}
                                     >
                                         <svg className={`w-8 h-8 transition-colors duration-200 ${star <= (hover || userRating) ? 'text-yellow-400 fill-current drop-shadow-sm' : 'text-slate-200 fill-current'}`} viewBox="0 0 24 24">
@@ -196,12 +196,12 @@ function Rating({ postId, postAuthorId }) {
             {/* Delete confirmation modal - centered using portal */}
             {isDeleteModalOpen && createPortal(
                 <div 
-                    className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+                    className="gpu-accelerate fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
                     onClick={() => setIsDeleteModalOpen(false)}
                     style={{ animation: 'fadeIn 0.2s ease-out' }}
                 >
                     <div 
-                        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center border border-slate-100"
+                        className="gpu-accelerate bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center border border-slate-100"
                         onClick={(e) => e.stopPropagation()}
                         style={{ animation: 'scaleIn 0.3s ease-out' }}
                     >

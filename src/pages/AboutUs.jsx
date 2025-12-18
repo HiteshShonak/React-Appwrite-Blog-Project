@@ -1,8 +1,15 @@
 import { Container, Button } from '../Components';
 import { Link } from 'react-router-dom';
 import Logo from '../assets/Logo.png'
+import { useEffect } from 'react';
 
 function AboutUs() {
+
+
+    useEffect(() => {
+                window.scrollTo(0, 0);
+            }, []);
+
   return (
     <div className='w-full min-h-screen bg-slate-50 py-12 md:py-20 page-anim px-2 sm:px-4'>
         <Container>
@@ -25,7 +32,7 @@ function AboutUs() {
                 </div>
 
                 {/* Mission card */}
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 md:p-12 mb-12">
+                <div className="gpu-accelerate bg-white rounded-3xl shadow-sm border border-slate-100 p-8 md:p-12 mb-12">
                     <div className="flex flex-col md:flex-row items-center gap-10">
                         <div className="flex-1">
                             <h2 className="text-2xl font-bold text-slate-900 mb-4">Our Mission</h2>
@@ -40,7 +47,7 @@ function AboutUs() {
                             <img 
                                 src={Logo} 
                                 alt="Team working together" 
-                                className="w-full h-64 object-contain rounded-2xl shadow-md transform rotate-2 hover:rotate-0 transition-all duration-500"
+                                className="gpu-accelerate w-full h-64 object-contain rounded-2xl shadow-md transform rotate-2 hover:rotate-0 transition-all duration-500"
                             />
                         </div>
                     </div>
@@ -48,7 +55,7 @@ function AboutUs() {
 
                 {/* Values grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="gpu-accelerate bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                         <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-4">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -60,7 +67,7 @@ function AboutUs() {
                         </p>
                     </div>
 
-                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="gpu-accelerate bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                         <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-4">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -72,7 +79,7 @@ function AboutUs() {
                         </p>
                     </div>
 
-                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="gpu-accelerate bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                         <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-4">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -86,7 +93,7 @@ function AboutUs() {
                 </div>
 
                 {/* CTA section */}
-                <div className="bg-slate-900 rounded-3xl p-8 md:p-12 text-center text-white relative overflow-hidden">
+                <div className="gpu-accelerate bg-slate-900 rounded-3xl p-8 md:p-12 text-center text-white relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-full opacity-10">
                         <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                             <path d="M0 100 C 20 0 50 0 100 100 Z" fill="white" />

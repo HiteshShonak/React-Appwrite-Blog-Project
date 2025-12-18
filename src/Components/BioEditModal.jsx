@@ -42,18 +42,18 @@ function BioEditModal({ isOpen, onClose, initialBio, userData, onBioSaved }) {
 
     return createPortal(
         <div 
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            className="gpu-accelerate fixed inset-0 z-[9999] flex items-center justify-center p-4"
             style={{ animation: 'fadeIn 0.2s ease-out' }}
         >
             {/* Backdrop */}
             <div 
-                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
+                className="gpu-accelerate absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
                 onClick={onClose}
             />
 
             {/* Modal content */}
             <div 
-                className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 border border-slate-100"
+                className="gpu-accelerate relative bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 border border-slate-100"
                 style={{ animation: 'scaleIn 0.3s ease-out' }}
                 onClick={(e) => e.stopPropagation()}
             >

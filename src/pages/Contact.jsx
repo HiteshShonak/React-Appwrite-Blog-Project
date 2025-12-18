@@ -8,6 +8,10 @@ function Contact() {
     const [notification, setNotification] = useState({ message: "", type: "" });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    useEffect(() => {
+                window.scrollTo(0, 0);
+            }, []);
+
     const submit = async (data) => {
         setNotification("");
         setIsSubmitting(true);
@@ -51,8 +55,8 @@ function Contact() {
             
             {/* Notification toast */}
             {notification.message && (
-                <div className='fixed top-24 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-sm px-4 pointer-events-none'>
-                    <div className={`
+                <div className='gpu-accelerate fixed top-24 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-sm px-4 pointer-events-none'>
+                    <div className={`gpu-accelerate
                         px-6 py-3 rounded-lg shadow-xl animate-bounce flex items-center justify-center gap-2
                         ${notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}
                     `}>
@@ -86,7 +90,7 @@ function Contact() {
                     </div>
 
                     {/* Contact form */}
-                    <div className="w-full md:w-2/3 bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                    <div className="gpu-accelerate w-full md:w-2/3 bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
                         <form onSubmit={handleSubmit(submit)} className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <Input

@@ -20,6 +20,10 @@ function AuthorProfile() {
         [authorName]
     );
 
+    useEffect(() => {
+            window.scrollTo(0, 0);
+        }, [username]);
+
     const fetchAuthorData = useCallback(async () => {
         if (!username) {
             setLoading(false);
@@ -155,13 +159,13 @@ function AuthorProfile() {
             <Container>
                 
                 {/* Profile card */}
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 mb-8 sm:mb-12">
+                <div className="gpu-accelerate bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 mb-8 sm:mb-12">
                     
                     <div className="flex flex-col md:flex-row items-center md:items-start gap-4 sm:gap-6 text-center md:text-left">
                         
                         {/* Avatar */}
                         <div className="shrink-0">
-                            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-slate-100 shadow-sm bg-indigo-50">
+                            <div className="gpu-accelerate w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-slate-100 shadow-sm bg-indigo-50">
                                 {avatarUrl ? (
                                     <img src={avatarUrl} alt={authorName} className="w-full h-full object-cover" />
                                 ) : (

@@ -9,7 +9,7 @@ import { compressImage } from '../../utils/compressImage';
 import { addPost, updatePost } from '../../Store/postSlice';
 import { addUserPost, updateUserPost } from '../../Store/dashboardSlice';
 import { updateTrendingPost } from '../../Store/homeSlice';
-
+import ImageCropper from '../ImageCropper.jsx';
 
 function PostForm({ post }) {
     const { register, handleSubmit, watch, setValue, control, getValues, reset } = useForm({
@@ -30,6 +30,10 @@ function PostForm({ post }) {
     const [isInitializing, setIsInitializing] = useState(true);
     const [previewUrl, setPreviewUrl] = useState(post ? appwriteService.getFileView(post.featuredImage) : null);
     const [selectedFile, setSelectedFile] = useState(null);
+
+    // 🚨 NEW: Cropper State
+    const [isCropperOpen, setIsCropperOpen] = useState(false);
+    const [tempImage, setTempImage] = useState(null);
 
     const isLoading = useMemo(() => isInitializing || submitting, [isInitializing, submitting]);
     const isEditMode = useMemo(() => !!post, [post]);
@@ -91,13 +95,31 @@ function PostForm({ post }) {
         }
     }, [watch, post]);
 
-    // Handle image file selection
+    // 🚨 UPDATED: Handle image file selection (Opens Cropper)
     const handleFileChange = useCallback((e) => {
         if (e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
-            setSelectedFile(file);
-            setPreviewUrl(URL.createObjectURL(file));
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                setTempImage(reader.result);
+                setIsCropperOpen(true);
+            };
+            // Reset input value to allow re-selecting same file if needed
+            e.target.value = null; 
         }
+    }, []);
+
+    // 🚨 NEW: Handle Crop Completion
+    const handleCropDone = useCallback((croppedBlob) => {
+        setIsCropperOpen(false);
+        
+        // Convert Blob to File
+        // Note: Title/Type doesn't strictly matter here as compressImage will rename/retype it later
+        const file = new File([croppedBlob], "cropped-image.jpg", { type: "image/jpeg" });
+        
+        setSelectedFile(file);
+        setPreviewUrl(URL.createObjectURL(file));
     }, []);
 
     // Convert title to URL-friendly slug
@@ -120,6 +142,7 @@ function PostForm({ post }) {
             
             // Handle image upload if new file selected
             if (selectedFile) {
+                // compressImage logic remains exactly the same as you had it
                 const compressed = await compressImage(selectedFile, 'post', data.title, userData.name);
                 const file = await appwriteService.uploadFile(compressed);
                 
@@ -201,6 +224,18 @@ function PostForm({ post }) {
 
     return (
         <>
+            {/* 🚨 NEW: Image Cropper Portal */}
+            {isCropperOpen && (
+                <ImageCropper 
+                    imageSrc={tempImage}
+                    onCropComplete={handleCropDone}
+                    onCancel={() => setIsCropperOpen(false)}
+                    aspect={16 / 9}
+                    cropShape="rect"
+                    title="Crop Blog Header"
+                />
+            )}
+
             {/* Loading overlay */}
             {isLoading && createPortal(
                 <div 
