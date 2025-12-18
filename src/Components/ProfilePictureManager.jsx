@@ -128,7 +128,7 @@ function ProfilePictureManager({ onProfileUpdate }) {
             {/* Profile picture management modal */}
             {isAvatarModalOpen && !selectedImageForCrop && createPortal(
                 <div 
-                    className="gpu-accelerate fixed inset-0 z-[9999] flex items-center justify-center p-4"
+                    className="gpu-accelerate fixed inset-0 z-9999 flex items-center justify-center p-4"
                     style={{ animation: 'fadeIn 0.2s ease-out' }}
                 >
                     <div 

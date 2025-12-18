@@ -196,7 +196,7 @@ function Rating({ postId, postAuthorId }) {
             {/* Delete confirmation modal - centered using portal */}
             {isDeleteModalOpen && createPortal(
                 <div 
-                    className="gpu-accelerate fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+                    className="gpu-accelerate fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
                     onClick={() => setIsDeleteModalOpen(false)}
                     style={{ animation: 'fadeIn 0.2s ease-out' }}
                 >

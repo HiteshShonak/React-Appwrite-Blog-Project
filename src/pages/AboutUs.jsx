@@ -40,7 +40,7 @@ function AboutUs() {
                                 We believe that everyone has a story to tell. Our mission is to provide a clean, distraction-free environment where your words take center stage. Whether you are an industry expert or just starting your writing journey, this is your canvas.
                             </p>
                             <p className="text-slate-600 leading-relaxed">
-                                We strip away the clutter so you can focus on what matters most: **creating content that connects.**
+                                We strip away the clutter so you can focus on what matters most: <b>creating content that connects.</b>
                             </p>
                         </div>
                         <div className="flex-1 w-full">

@@ -239,7 +239,7 @@ function PostForm({ post }) {
             {/* Loading overlay */}
             {isLoading && createPortal(
                 <div 
-                    className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/80 backdrop-blur-md"
+                    className="fixed inset-0 z-9999 flex items-center justify-center bg-slate-900/80 backdrop-blur-md"
                     style={{ animation: 'fadeIn 0.2s ease-out' }}
                 >
                     <div 

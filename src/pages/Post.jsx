@@ -185,7 +185,7 @@ export default function Post() {
             {/* Delete confirmation modal */}
             {isDeleteModalOpen && createPortal(
                 <div 
-                    className="gpu-accelerate fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+                    className="gpu-accelerate fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
                     style={{ animation: 'fadeIn 0.2s ease-out' }}
                 >
                     <div 
