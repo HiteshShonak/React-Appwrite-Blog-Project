@@ -1,26 +1,33 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import appwriteService from '../appwrite/config';
 
 function BioEditModal({ isOpen, onClose, initialBio, userData, onBioSaved }) {
     const [bioInput, setBioInput] = useState(initialBio || "");
     const [saving, setSaving] = useState(false);
 
-    // Update local state when the modal opens or initialBio changes
+    // Update bio input when modal opens or initial bio changes
     useEffect(() => {
         setBioInput(initialBio || "");
     }, [initialBio, isOpen]);
 
+    // Lock background scroll when modal is open
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [isOpen]);
+
+    // Save bio to database
     const handleSave = async () => {
         if (!userData) return;
         setSaving(true);
         
         try {
-            // Call Appwrite Service
-            await appwriteService.updateUserProfile(userData.$id, {
-                Bio: bioInput 
-            });
-            
-            // Notify Parent (Dashboard) and Close
+            await appwriteService.updateUserProfile(userData.$id, { Bio: bioInput });
             if (onBioSaved) onBioSaved(bioInput);
             onClose();
         } catch (error) {
@@ -33,17 +40,24 @@ function BioEditModal({ isOpen, onClose, initialBio, userData, onBioSaved }) {
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    return createPortal(
+        <div 
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            style={{ animation: 'fadeIn 0.2s ease-out' }}
+        >
             {/* Backdrop */}
             <div 
                 className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
                 onClick={onClose}
-            ></div>
+            />
 
-            {/* Modal Content */}
-            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-100">
-                {/* Close X Button */}
+            {/* Modal content */}
+            <div 
+                className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 border border-slate-100"
+                style={{ animation: 'scaleIn 0.3s ease-out' }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Close button */}
                 <button 
                     onClick={onClose} 
                     className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-full transition-colors"
@@ -63,24 +77,25 @@ function BioEditModal({ isOpen, onClose, initialBio, userData, onBioSaved }) {
                         onChange={(e) => setBioInput(e.target.value)}
                         maxLength={300}
                         disabled={saving}
-                    ></textarea>
+                    />
                     <div className="text-right text-xs text-slate-400 mt-1">{bioInput.length}/300</div>
                 </div>
 
                 <button 
                     onClick={handleSave} 
                     disabled={saving} 
-                    className="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {saving ? (
                         <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                             Saving...
                         </>
                     ) : 'Save Bio'}
                 </button>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 

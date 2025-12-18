@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { createPortal } from 'react-dom';
 import appwriteService from '../appwrite/config';
 import { Link } from 'react-router-dom';
 import { cacheUserProfile } from '../Store/usersSlice';
 
-// ----------------------------------------------------------------------
-// 1. HELPER COMPONENT: Handles individual comment logic
-// ----------------------------------------------------------------------
-const CommentItem = ({ comment, userData, toggleLike, setDeleteCommentId, postAuthorId }) => {
+
+// Memoized individual comment component
+const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, postAuthorId }) => {
     const dispatch = useDispatch();
 
     const cachedAuthor = useSelector((state) => 
@@ -17,15 +17,23 @@ const CommentItem = ({ comment, userData, toggleLike, setDeleteCommentId, postAu
     const [authorAvatarUrl, setAuthorAvatarUrl] = useState(cachedAuthor?.avatar || null);
     const [authorUsername, setAuthorUsername] = useState(cachedAuthor?.username || null);
     
-    const isLiked = comment.likedBy && userData && comment.likedBy.includes(userData.$id);
-    const likeCount = comment.likedBy ? comment.likedBy.length : 0;
-    const isTemp = comment.$id.startsWith('temp-');
-    
-    // 🚨 Check if this comment was written by the Post Author
-    const isPostAuthor = postAuthorId && comment.userId === postAuthorId;
+    // Memoized computed values
+    const isLiked = useMemo(() => 
+        comment.likedBy && userData && comment.likedBy.includes(userData.$id),
+        [comment.likedBy, userData]
+    );
+    const likeCount = useMemo(() => comment.likedBy ? comment.likedBy.length : 0, [comment.likedBy]);
+    const isTemp = useMemo(() => comment.$id.startsWith('temp-'), [comment.$id]);
+    const isPostAuthor = useMemo(() => postAuthorId && comment.userId === postAuthorId, [postAuthorId, comment.userId]);
+    const isOwnComment = useMemo(() => userData && userData.$id === comment.userId, [userData, comment.userId]);
+    const formattedDate = useMemo(() => 
+        isTemp ? 'Posting...' : new Date(comment.$createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        [comment.$createdAt, isTemp]
+    );
 
+    // Fetch author profile if not cached
     useEffect(() => {
-        if (!isTemp && !cachedAuthor) {
+        if (!isTemp && !cachedAuthor && comment.userId) {
             appwriteService.getUserProfile(comment.userId)
                 .then((profile) => {
                     if (profile) {
@@ -50,7 +58,10 @@ const CommentItem = ({ comment, userData, toggleLike, setDeleteCommentId, postAu
         }
     }, [comment.userId, isTemp, cachedAuthor, dispatch]);
 
-    const getInitials = (name) => name ? name.charAt(0).toUpperCase() : '?';
+    const getInitials = useCallback((name) => name ? name.charAt(0).toUpperCase() : '?', []);
+
+    const handleDelete = useCallback(() => setDeleteCommentId(comment.$id), [comment.$id, setDeleteCommentId]);
+    const handleLike = useCallback(() => toggleLike(comment), [comment, toggleLike]);
 
     return (
         <div className={`flex gap-2 pt-2 first:pt-0 group ${isTemp ? 'opacity-70' : 'opacity-100'}`}>
@@ -70,7 +81,7 @@ const CommentItem = ({ comment, userData, toggleLike, setDeleteCommentId, postAu
                 )}
             </Link>
 
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1 flex-wrap">
                     <Link 
                         to={authorUsername ? `/author/${authorUsername}` : '#'} 
@@ -79,7 +90,6 @@ const CommentItem = ({ comment, userData, toggleLike, setDeleteCommentId, postAu
                         {comment.authorName}
                     </Link>
                     
-                    {/* 🚨 AUTHOR ATTRIBUTION BADGE */}
                     {isPostAuthor && (
                         <span className="bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
                             Author
@@ -88,40 +98,51 @@ const CommentItem = ({ comment, userData, toggleLike, setDeleteCommentId, postAu
 
                     <span className="text-xs text-slate-300">•</span>
                     <span className="text-xs text-slate-400 font-medium">
-                        {isTemp ? 'Posting...' : new Date(comment.$createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        {formattedDate}
                     </span>
                 </div>
                 <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{comment.content}</p>
                 
+                {/* Delete button - smart detection: always visible on touch, hover on pointer devices */}
                 <div className="flex items-center gap-2 mt-1 mb-1">
-                    {userData && userData.$id === comment.userId && !isTemp && (
-                        <button onClick={() => setDeleteCommentId(comment.$id)} className="text-[11px] font-bold text-slate-400 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">Delete</button>
+                    {isOwnComment && !isTemp && (
+                        <button 
+                            onClick={handleDelete} 
+                            className="text-[11px] font-bold text-slate-400 hover:text-rose-500 transition-colors opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
+                        >
+                            Delete
+                        </button>
                     )}
                 </div>
             </div>
 
             <div className="shrink-0 self-center pl-2">
                 <button 
-                    onClick={() => toggleLike(comment)}
+                    onClick={handleLike}
                     className={`flex flex-col items-center gap-0.5 transition-all transform active:scale-90 ${isLiked ? 'text-rose-500' : 'text-slate-300 hover:text-rose-400'}`}
                     disabled={!userData || isTemp}
+                    aria-label={isLiked ? 'Unlike comment' : 'Like comment'}
                 >
                     {isLiked ? (
-                        <svg className="w-5 h-5 fill-current drop-shadow-sm" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                        <svg className="w-5 h-5 fill-current drop-shadow-sm" viewBox="0 0 24 24">
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                        </svg>
                     ) : (
-                        <svg className="w-5 h-5 fill-none stroke-current stroke-[2.5]" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" /></svg>
+                        <svg className="w-5 h-5 fill-none stroke-current stroke-[2.5]" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+                        </svg>
                     )}
                     <span className="text-[10px] font-bold">{likeCount > 0 ? likeCount : ''}</span>
                 </button>
             </div>
         </div>
     );
-};
+});
 
-// ----------------------------------------------------------------------
-// 2. MAIN COMPONENT
-// ----------------------------------------------------------------------
-// 🚨 Accept 'postAuthorId' prop
+CommentItem.displayName = 'CommentItem';
+
+
+// Main comments component
 function Comments({ postId, postAuthorId }) {
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState("");
@@ -130,11 +151,24 @@ function Comments({ postId, postAuthorId }) {
     const [deleteCommentId, setDeleteCommentId] = useState(null);
     const userData = useSelector((state) => state.auth.userData);
 
+    // Scroll lock when modal is open
+    useEffect(() => {
+        if (deleteCommentId) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [deleteCommentId]);
+
+    // Fetch comments from API
     const fetchComments = useCallback(async (isSilent = false) => {
         if (!isSilent) setLoading(true);
         try {
             const data = await appwriteService.getComments(postId);
-            if (data) setComments(data.documents);
+            if (data?.documents) setComments(data.documents);
+        } catch (error) {
+            console.error("Error fetching comments:", error);
         } finally {
             if (!isSilent) setLoading(false);
         }
@@ -142,7 +176,8 @@ function Comments({ postId, postAuthorId }) {
 
     useEffect(() => { fetchComments(); }, [fetchComments]);
 
-    const handleSubmit = async (e) => {
+    // Submit new comment
+    const handleSubmit = useCallback(async (e) => {
         e.preventDefault();
         if (!newComment.trim() || !userData) return;
         setSubmitting(true);
@@ -150,7 +185,7 @@ function Comments({ postId, postAuthorId }) {
         const tempId = `temp-${Date.now()}`;
         const optimisticComment = {
             $id: tempId,
-            content: newComment,
+            content: newComment.trim(),
             postId,
             userId: userData.$id,
             authorName: userData.name,
@@ -171,33 +206,37 @@ function Comments({ postId, postAuthorId }) {
             });
             fetchComments(true); 
         } catch (error) {
-            console.error("Error:", error);
+            console.error("Error posting comment:", error);
             setComments((prev) => prev.filter(c => c.$id !== tempId));
             setNewComment(optimisticComment.content);
         } finally {
             setSubmitting(false);
         }
-    };
+    }, [newComment, userData, postId, fetchComments]);
 
-    const confirmDelete = async () => {
+    // Delete comment with optimistic update
+    const confirmDelete = useCallback(async () => {
         if (!deleteCommentId) return;
+        const commentToDelete = deleteCommentId;
         setDeleteCommentId(null);
         const previousComments = [...comments];
-        setComments((prev) => prev.filter(c => c.$id !== deleteCommentId));
+        setComments((prev) => prev.filter(c => c.$id !== commentToDelete));
 
         try {
-            await appwriteService.deleteComment(deleteCommentId);
+            await appwriteService.deleteComment(commentToDelete);
             fetchComments(true);
         } catch (error) {
+            console.error("Error deleting comment:", error);
             setComments(previousComments);
         }
-    };
+    }, [deleteCommentId, comments, fetchComments]);
 
-    const toggleLike = async (comment) => {
+    // Toggle like on comment
+    const toggleLike = useCallback(async (comment) => {
         if (!userData) return;
         const userId = userData.$id;
         const currentLikes = comment.likedBy || [];
-        let updatedLikes = currentLikes.includes(userId) 
+        const updatedLikes = currentLikes.includes(userId) 
             ? currentLikes.filter(id => id !== userId) 
             : [...currentLikes, userId];
 
@@ -205,32 +244,58 @@ function Comments({ postId, postAuthorId }) {
 
         try {
             await appwriteService.updateComment(comment.$id, { likedBy: updatedLikes });
-        } catch (error) { fetchComments(true); }
-    };
+        } catch (error) { 
+            console.error("Error toggling like:", error);
+            fetchComments(true); 
+        }
+    }, [userData, fetchComments]);
+
+    const handleCommentChange = useCallback((e) => setNewComment(e.target.value), []);
+    const closeModal = useCallback(() => setDeleteCommentId(null), []);
 
     return (
         <div className="relative w-full">
             
-             {/* 🚨 DELETE MODAL (Fixed Centering) */}
-            {deleteCommentId && (
-                // Added z-[100] to ensure it is always on top
-                <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all animate-fadeIn">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 border border-slate-100">
+            {/* Delete confirmation modal */}
+            {deleteCommentId && createPortal(
+                <div 
+                    className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+                    style={{ animation: 'fadeIn 0.2s ease-out' }}
+                    onClick={closeModal}
+                >
+                    <div 
+                        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 border border-slate-100"
+                        style={{ animation: 'scaleIn 0.3s ease-out' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <div className="flex flex-col items-center text-center">
                             <div className="w-14 h-14 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-5 border border-rose-100">
-                                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
                             </div>
                             <h3 className="text-xl font-bold text-slate-900 mb-2">Delete Comment?</h3>
                             <p className="text-sm text-slate-500 mb-8 leading-relaxed">
                                 This will permanently remove your comment.
                             </p>
                             <div className="flex gap-3 w-full">
-                                <button onClick={() => setDeleteCommentId(null)} className="flex-1 px-4 py-3 bg-slate-50 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors text-sm border border-slate-200">Cancel</button>
-                                <button onClick={confirmDelete} className="flex-1 px-4 py-3 bg-rose-500 text-white font-bold rounded-xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-200 active:scale-95 text-sm">Yes, Delete</button>
+                                <button 
+                                    onClick={closeModal} 
+                                    className="flex-1 px-4 py-3 bg-slate-50 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors text-sm border border-slate-200"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={confirmDelete} 
+                                    className="flex-1 px-4 py-3 bg-rose-500 text-white font-bold rounded-xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-200 active:scale-95 text-sm"
+                                >
+                                    Yes, Delete
+                                </button>
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-3">
@@ -247,11 +312,15 @@ function Comments({ postId, postAuthorId }) {
                         rows="3"
                         placeholder="What are your thoughts?"
                         value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
+                        onChange={handleCommentChange}
                         disabled={submitting}
-                    ></textarea>
+                    />
                     <div className="absolute bottom-3 right-3 opacity-100 transition-opacity">
-                        <button type="submit" disabled={submitting || !newComment.trim()} className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-md shadow-indigo-200">
+                        <button 
+                            type="submit" 
+                            disabled={submitting || !newComment.trim()} 
+                            className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-md shadow-indigo-200 active:scale-95"
+                        >
                             {submitting ? 'Posting...' : 'Post'}
                         </button>
                     </div>
@@ -266,7 +335,9 @@ function Comments({ postId, postAuthorId }) {
 
             <div className="space-y-3 divide-y divide-slate-200/60">
                 {loading ? (
-                    <div className="flex justify-center py-8"><div className="w-8 h-8 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin"></div></div>
+                    <div className="flex justify-center py-8">
+                        <div className="w-8 h-8 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
+                    </div>
                 ) : comments.length === 0 ? (
                     <div className="text-center py-6 text-slate-400 text-sm">Be the first to share your thoughts.</div>
                 ) : (
@@ -277,7 +348,6 @@ function Comments({ postId, postAuthorId }) {
                             userData={userData} 
                             toggleLike={toggleLike} 
                             setDeleteCommentId={setDeleteCommentId}
-                            // 🚨 Pass the Author ID down
                             postAuthorId={postAuthorId}
                         />
                     ))

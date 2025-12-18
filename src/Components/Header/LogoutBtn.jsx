@@ -1,21 +1,18 @@
 import React from 'react';
 import { useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom'; // 1. Import useNavigate
+import { useNavigate } from 'react-router-dom';
 import authService from '../../appwrite/auth.js';
 import { logout } from '../../Store/authSlice.js';
 
-function LogoutBtn() {
+
+function LogoutBtn({ className = "" }) {
     const dispatch = useDispatch();
-    const navigate = useNavigate(); // 2. Initialize navigate
+    const navigate = useNavigate();
 
     const logoutHandler = () => {
         authService.logout()
         .then(() => {
-            // Update Redux state
             dispatch(logout());
-            
-            // 3. Force redirect to Login (or Home) page
-            // This clears the current view so they don't see protected content
             navigate('/home'); 
         })
         .catch((error) => {
@@ -23,10 +20,13 @@ function LogoutBtn() {
         });
     };
 
+    // Base styling that always applies
+    const baseClassName = "px-4 py-2 text-sm font-semibold rounded-lg hover:scale-105 active:scale-95 transition-all duration-200 shadow-sm hover:shadow-md";
+
     return (
         <button 
             onClick={logoutHandler} 
-            className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm hover:shadow"
+            className={`${baseClassName} ${className}`}
         >
             Logout
         </button>

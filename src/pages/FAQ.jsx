@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Container } from '../Components/index.js'; // Assuming you have a standard Container component
+import { Container } from '../Components/index.js';
 import { Link } from 'react-router-dom';
 
-// --- Component for a single collapsible FAQ item ---
+// Collapsible FAQ item component
 const FaqItem = ({ question, answer }) => {
     const [isOpen, setIsOpen] = useState(false);
 
@@ -17,7 +17,6 @@ const FaqItem = ({ question, answer }) => {
                 </span>
                 <span className="text-slate-500">
                     <svg 
-                        // Using vanilla CSS classes for smooth arrow rotation
                         className={`w-6 h-6 faq-arrow ${isOpen ? 'faq-arrow-rotated' : ''}`} 
                         fill="none" stroke="currentColor" viewBox="0 0 24 24"
                     >
@@ -26,10 +25,7 @@ const FaqItem = ({ question, answer }) => {
                 </span>
             </button>
             
-            {/* 🚨 Uses the 'faq-answer-collapse' and 'faq-answer-expanded' classes */}
-            <div 
-                className={`faq-answer-collapse ${isOpen ? 'faq-answer-expanded' : ''}`}
-            >
+            <div className={`faq-answer-collapse ${isOpen ? 'faq-answer-expanded' : ''}`}>
                 <div className="text-slate-600 leading-relaxed pr-8">
                     {answer}
                 </div>
@@ -38,9 +34,8 @@ const FaqItem = ({ question, answer }) => {
     );
 };
 
-// --- Main FAQ Component ---
 function FAQ() {
-
+    // FAQ data grouped by category
     const faqData = [
         {
             category: "Getting Started & Accounts",
@@ -114,11 +109,11 @@ function FAQ() {
     ];
 
     return (
-        <div className='w-full min-h-screen bg-slate-50 py-16'>
+        <div className='w-full min-h-screen bg-slate-50 py-16 px-2 sm:px-4'>
             <Container>
                 <div className="max-w-4xl mx-auto">
                     
-                    {/* Header */}
+                    {/* Page header */}
                     <header className="text-center mb-12">
                         <h1 className="text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
                             Frequently Asked Questions
@@ -128,13 +123,14 @@ function FAQ() {
                         </p>
                     </header>
 
-                    {/* FAQ Sections */}
+                    {/* FAQ sections */}
                     <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8 md:p-12 space-y-8">
-                        
                         {faqData.map((section, index) => (
                             <section key={index} className={index > 0 ? "pt-8 border-t border-slate-100" : ""}>
                                 <h2 className="text-2xl font-bold text-indigo-600 mb-6 flex items-center gap-3">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                    </svg>
                                     {section.category}
                                 </h2>
                                 
@@ -151,7 +147,7 @@ function FAQ() {
                         ))}
                     </div>
 
-                    {/* Contact CTA */}
+                    {/* Contact support CTA */}
                     <div className="mt-12 text-center bg-indigo-50 p-8 rounded-2xl border border-indigo-200">
                         <p className="text-xl font-semibold text-indigo-700 mb-4">
                             Still need help?

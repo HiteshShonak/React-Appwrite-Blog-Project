@@ -12,19 +12,15 @@ function Contact() {
         setNotification("");
         setIsSubmitting(true);
 
-        // 1. Prepare data for EmailJS
-        // Note: I included BOTH 'subject' and 'title' here to match your screenshot
-        // regardless of whether you updated the template or not.
         const templateParams = {
             name: data.name,
             email: data.email,
             subject: data.subject, 
-            title: data.subject, // Fallback for your specific template setup
+            title: data.subject,
             message: data.message,
         };
 
         try {
-            // 2. Send the email using your Environment Variables
             await emailjs.send(
                 import.meta.env.VITE_EMAILJS_SERVICE_ID,
                 import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
@@ -33,7 +29,7 @@ function Contact() {
             );
             
             setNotification({ message: "Message sent successfully!", type: "success" });
-            reset(); // Clear the form
+            reset();
         } catch (error) {
             console.log("EmailJS Error:", error);
             setNotification({ message: "Failed to send. Check your connection.", type: "error" });
@@ -42,7 +38,7 @@ function Contact() {
         }
     };
 
-    // Auto-hide notification
+    // Auto-hide notification after 3 seconds
     useEffect(() => {
         if (notification.message) {
             const timer = setTimeout(() => setNotification({ message: "", type: "" }), 3000);
@@ -51,9 +47,9 @@ function Contact() {
     }, [notification]);
 
     return (
-        <div className='w-full min-h-screen bg-slate-50 py-12 relative page-anim'>
+        <div className='w-full min-h-screen bg-slate-50 py-12 relative page-anim px-2 sm:px-4'>
             
-            {/* Notification Toast */}
+            {/* Notification toast */}
             {notification.message && (
                 <div className='fixed top-24 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-sm px-4 pointer-events-none'>
                     <div className={`
@@ -68,7 +64,7 @@ function Contact() {
             <Container>
                 <div className="max-w-5xl mx-auto flex flex-col md:flex-row gap-10 items-start">
                     
-                    {/* LEFT SIDE: Contact Info (No Live Chat) */}
+                    {/* Contact information */}
                     <div className="w-full md:w-1/3 pt-4 space-y-6">
                         <div>
                             <h2 className="text-3xl font-extrabold text-slate-900">Get in touch</h2>
@@ -78,7 +74,9 @@ function Contact() {
                         </div>
                         <div className="flex items-start gap-4">
                             <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
                             </div>
                             <div>
                                 <h3 className="font-bold text-slate-900">Email Us</h3>
@@ -87,7 +85,7 @@ function Contact() {
                         </div>
                     </div>
 
-                    {/* RIGHT SIDE: The Form */}
+                    {/* Contact form */}
                     <div className="w-full md:w-2/3 bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
                         <form onSubmit={handleSubmit(submit)} className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

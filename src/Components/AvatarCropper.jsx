@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '../utils/canvasUtils';
 
@@ -8,25 +9,23 @@ function AvatarCropper({ imageSrc, onCropComplete, onCancel }) {
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
     const [processing, setProcessing] = useState(false);
 
-    // This callback runs every time the user moves the image
-    const onCropChange = (crop) => {
-        setCrop(crop);
-    };
+    // Lock scroll when cropper is open
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = 'unset'; };
+    }, []);
 
-    // This runs when the user stops dragging
+    // Update cropped area when user stops dragging
     const onCropCompleteInternal = useCallback((croppedArea, croppedAreaPixels) => {
         setCroppedAreaPixels(croppedAreaPixels);
     }, []);
 
-    // This runs when user clicks "Save"
+    // Process and save cropped image
     const showCroppedImage = async () => {
         setProcessing(true);
         try {
-            // 1. Generate the new file using canvas
             const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
             const file = new File([croppedImageBlob], "avatar.jpg", { type: "image/jpeg" });
-            
-            // 2. Send back to parent
             onCropComplete(file);
         } catch (e) {
             console.error(e);
@@ -35,26 +34,35 @@ function AvatarCropper({ imageSrc, onCropComplete, onCancel }) {
         }
     };
 
-    return (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl flex flex-col h-125">
-                
-                {/* HEADER */}
+    return createPortal(
+        <div 
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
+            style={{ animation: 'fadeIn 0.2s ease-out' }}
+        >
+            <div 
+                className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl flex flex-col h-125"
+                style={{ animation: 'scaleIn 0.3s ease-out' }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Header */}
                 <div className="p-4 border-b border-slate-100 flex justify-between items-center z-10 bg-white">
                     <h3 className="font-bold text-slate-800">Adjust Photo</h3>
-                    <button onClick={onCancel} className="text-slate-400 hover:text-slate-600">
+                    <button 
+                        onClick={onCancel} 
+                        className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-full transition-colors"
+                    >
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
 
-                {/* CROPPER AREA */}
+                {/* Cropper area */}
                 <div className="relative flex-1 bg-slate-900">
                     <Cropper
                         image={imageSrc}
                         crop={crop}
                         zoom={zoom}
-                        aspect={1} // 1:1 Square aspect ratio
-                        cropShape="round" // Shows a circle mask!
+                        aspect={1}
+                        cropShape="round"
                         showGrid={false}
                         onCropChange={setCrop}
                         onCropComplete={onCropCompleteInternal}
@@ -62,7 +70,7 @@ function AvatarCropper({ imageSrc, onCropComplete, onCancel }) {
                     />
                 </div>
 
-                {/* CONTROLS */}
+                {/* Controls */}
                 <div className="p-6 bg-white space-y-4 z-10">
                     <div className="flex items-center gap-4">
                         <span className="text-xs font-bold text-slate-400">Zoom</span>
@@ -88,14 +96,15 @@ function AvatarCropper({ imageSrc, onCropComplete, onCancel }) {
                         <button 
                             onClick={showCroppedImage}
                             disabled={processing}
-                            className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all disabled:opacity-50"
+                            className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {processing ? 'Processing...' : 'Set Profile Picture'}
                         </button>
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 

@@ -4,7 +4,7 @@ import { Container } from '../Components/index.js'; // Ensure correct import pat
 
 function NotFound() {
   return (
-    <div className='w-full min-h-screen bg-slate-50 flex items-center justify-center py-20 page-anim'>
+    <div className='w-full min-h-screen bg-slate-50 flex items-center justify-center py-20 page-anim px-2 sm:px-4'>
       <Container>
         <div className="text-center p-8 bg-white rounded-3xl shadow-xl border border-slate-100 max-w-2xl mx-auto">
           

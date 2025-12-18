@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react'
-import appwriteService from '../appwrite/config.js'
-import { Container, Button } from '../Components'
-import { useSelector, useDispatch } from 'react-redux'
-import { setTrendingPosts } from '../Store/homeSlice'
-import { Link, useNavigate } from 'react-router-dom'
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import appwriteService from '../appwrite/config.js';
+import { Container, Button } from '../Components';
+import { useSelector, useDispatch } from 'react-redux';
+import { setTrendingPosts } from '../Store/homeSlice';
+import { Link } from 'react-router-dom';
 
-// ----------------------------------------------------------------------
-// 1. HELPER COMPONENT (Unchanged)
-// ----------------------------------------------------------------------
-const TrendingCard = ({ post, onClick }) => {
-    const rating = post.rating; 
+
+// Memoized trending card component
+const TrendingCard = memo(({ post, onClick }) => {
+    const rating = post.rating;
 
     return (
         <div 
@@ -18,7 +18,6 @@ const TrendingCard = ({ post, onClick }) => {
         >
             <div className="pointer-events-none bg-white rounded-xl h-full overflow-hidden border border-slate-100 relative group"> 
                 
-                {/* Image Section */}
                 <div className='w-full h-40 bg-slate-200 relative'>
                     <img 
                         src={appwriteService.getFileView(post.featuredImage)} 
@@ -26,7 +25,6 @@ const TrendingCard = ({ post, onClick }) => {
                         className='w-full h-full object-cover' 
                     />
                     
-                    {/* ⭐ RATING BADGE */}
                     {rating && (
                         <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-lg shadow-sm flex items-center gap-1 border border-gray-100 z-10">
                             <svg className="w-3.5 h-3.5 text-yellow-500 fill-current" viewBox="0 0 24 24">
@@ -37,43 +35,49 @@ const TrendingCard = ({ post, onClick }) => {
                     )}
                 </div>
 
-                {/* Content Section */}
                 <div className='p-4'>
                     <h3 className='font-bold text-slate-800 truncate text-sm md:text-base'>{post.Title}</h3>
                 </div>
             </div>
         </div>
     );
-};
+});
 
-// ----------------------------------------------------------------------
-// 2. MAIN COMPONENT
-// ----------------------------------------------------------------------
+TrendingCard.displayName = 'TrendingCard';
+
+
 function Home() {
-    // 🚨 2. Use Redux State
-    const trending = useSelector((state) => state.home.trendingPosts);
-    const dispatch = useDispatch();
-
-    const [posts, setPosts] = useState([]);
-    
-    // Only show loading if we have NO trending posts cached
-    const [loading, setLoading] = useState(trending.length === 0);
-    
-    const authStatus = useSelector((state) => state.auth.status);
+    const location = useLocation();
     const navigate = useNavigate();
+    const dispatch = useDispatch();
+    const authStatus = useSelector((state) => state.auth.status);
+    const trending = useSelector((state) => state.home.trendingPosts);
+    
+    const [posts, setPosts] = useState([]);
+    const [loading, setLoading] = useState(trending.length === 0);
 
+    // Memoized trending carousel items
+    const carouselItems = useMemo(() => {
+        if (trending.length === 0) return [];
+        return Array(6).fill(trending).flat();
+    }, [trending]);
+
+    // Redirect from / to /home
     useEffect(() => {
-        // 🚨 3. Smart Fetching Logic
+        if (location.pathname === '/') {
+            navigate('/home', { replace: true });
+        }
+    }, [location.pathname, navigate]);
+
+    // Fetch trending posts if not cached
+    useEffect(() => {
         if (trending.length === 0) {
             setLoading(true);
 
             const fetchData = async () => {
                 try {
-                    // Minimum wait for smooth animation
                     const minWait = new Promise(resolve => setTimeout(resolve, 2000));
                     
-                    // 1. Fetch Posts (We don't cache 'posts' here as it's not used for display, logic kept as is)
-                    // 2. Fetch Trending
                     const dataFetch = Promise.all([
                         appwriteService.getPosts(),
                         appwriteService.getTrendingPosts()
@@ -81,39 +85,35 @@ function Home() {
 
                     const [[postsResponse, trendingResponse]] = await Promise.all([dataFetch, minWait]);
 
-                    if (postsResponse && postsResponse.documents) {
+                    if (postsResponse?.documents) {
                         setPosts(postsResponse.documents);
                     }
 
-                    // 🚨 PRE-FETCH RATINGS FOR TRENDING POSTS 🚨
-                    if (trendingResponse && trendingResponse.length > 0) {
-                        
+                    if (trendingResponse?.length > 0) {
                         const enrichedTrending = await Promise.all(
                             trendingResponse.map(async (post) => {
                                 try {
                                     const ratingData = await appwriteService.getPostRatings(post.$id);
                                     let avgRating = null;
                                     
-                                    if (ratingData && ratingData.documents.length > 0) {
+                                    if (ratingData?.documents?.length > 0) {
                                         const total = ratingData.documents.reduce((acc, curr) => acc + curr.stars, 0);
                                         avgRating = (total / ratingData.documents.length).toFixed(1);
                                     }
                                     return { ...post, rating: avgRating };
-                                } catch (e) {
+                                } catch {
                                     return { ...post, rating: null };
                                 }
                             })
                         );
                         
-                        // 🚨 4. Save Enriched Data to Redux
                         dispatch(setTrendingPosts(enrichedTrending));
                     } else {
-                        // Even if empty, update Redux so we stop trying to fetch next time
                         dispatch(setTrendingPosts([]));
                     }
 
                 } catch (error) {
-                    console.log("Error fetching home data:", error);
+                    console.error("Error fetching home data:", error);
                 } finally {
                     setLoading(false);
                 }
@@ -121,25 +121,20 @@ function Home() {
 
             fetchData();
         } else {
-            // Data exists in Redux -> Stop loading immediately
             setLoading(false);
         }
     }, [trending.length, dispatch]);
 
-    const handleCardClick = (e, postId) => {
+    const handleCardClick = useCallback((e, postId) => {
         e.preventDefault();
         e.stopPropagation();
-        if (authStatus) {
-            navigate(`/post/${postId}`);
-        } else {
-            navigate('/login');
-        }
-    }
+        navigate(authStatus ? `/post/${postId}` : '/login');
+    }, [authStatus, navigate]);
 
-    // INTRO LOADER (Unchanged)
+    // Loading screen
     if (loading) {
         return (
-            <div className="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center overflow-hidden">
+            <div className="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center overflow-hidden px-2 sm:px-4">
                 <div className="absolute inset-0 z-0 opacity-[0.4]" 
                      style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '32px 32px' }}>
                 </div>
@@ -176,20 +171,15 @@ function Home() {
                         <div className="absolute top-0 left-0 h-full w-full bg-blue-600 rounded-full animate-progress-indeterminate origin-left"></div>
                     </div>
                 </div>
-
-                
             </div>
         );
     }
 
     return (
-        <div className="w-full min-h-screen bg-slate-50 overflow-x-hidden flex flex-col justify-center page-anim">
-            
-
+        <div className="w-full min-h-screen bg-slate-50 overflow-x-hidden flex flex-col justify-center page-anim px-2 sm:px-4">
             <Container>
                 <div className="flex flex-col items-center justify-center py-10 md:py-20 text-center max-w-7xl mx-auto">
                     
-                    {/* HERO TITLE */}
                     <div className="mb-6 p-3 bg-blue-50 rounded-2xl inline-block animate-bounce">
                         <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
@@ -203,7 +193,7 @@ function Home() {
                         Join our community to start reading and writing today.
                     </p>
 
-                    {/* SCROLLING CONTAINER */}
+                    {/* Trending posts carousel */}
                     <div className="w-screen my-12 mt-6 overflow-hidden bg-white/60 border-y border-slate-200 pt-4 pb-12 backdrop-blur-sm group relative">
                         
                         <div className="text-center mb-8 relative z-30">
@@ -212,15 +202,12 @@ function Home() {
                             </span>
                         </div>
 
-                        {/* Fades */}
                         <div className="absolute top-0 left-0 w-32 md:w-64 2xl:w-96 h-full bg-linear-to-r from-slate-50 via-slate-50/90 to-transparent z-20 pointer-events-none"></div>
                         <div className="absolute top-0 right-0 w-32 md:w-64 2xl:w-96 h-full bg-linear-to-l from-slate-50 via-slate-50/90 to-transparent z-20 pointer-events-none"></div>
 
-                        {/* Track */}
                         <div className="flex w-max animate-scroll group-hover:paused items-center">
-                            {trending.length > 0 ? (
-                                // 🚨 Using Redux Data
-                                [...trending, ...trending, ...trending, ...trending, ...trending, ...trending].map((post, index) => (
+                            {carouselItems.length > 0 ? (
+                                carouselItems.map((post, index) => (
                                     <TrendingCard 
                                         key={`${post.$id}-${index}`} 
                                         post={post} 
@@ -235,7 +222,7 @@ function Home() {
                         </div>
                     </div>
 
-                    {/* CTA BUTTONS */}
+                    {/* CTA buttons */}
                     <div className="flex flex-col sm:flex-row gap-4 relative z-20 mt-4">
                         {authStatus ? (
                             <>
@@ -269,7 +256,7 @@ function Home() {
                 </div>
             </Container>
         </div>
-    )
+    );
 }
 
-export default Home
+export default Home;

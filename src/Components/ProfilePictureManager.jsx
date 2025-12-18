@@ -1,54 +1,60 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
+import { createPortal } from 'react-dom';
 import appwriteService from '../appwrite/config';
 import { compressImage } from '../utils/compressImage';
-import AvatarCropper from './AvatarCropper'; // 🚨 Import New Component
+import AvatarCropper from './AvatarCropper';
 
 function ProfilePictureManager({ onProfileUpdate }) {
     const userData = useSelector((state) => state.auth.userData);
     const [fileId, setFileId] = useState(null);
-    
-    // UI States
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
-    
-    // 🚨 CROPPER STATE
-    const [selectedImageForCrop, setSelectedImageForCrop] = useState(null); 
+    const [selectedImageForCrop, setSelectedImageForCrop] = useState(null);
 
+    // Fetch profile image ID on mount
     useEffect(() => {
         if (userData) {
             appwriteService.getProfileImageFileId(userData.$id).then(setFileId);
         }
     }, [userData]);
 
+    // Lock scroll when modal is open
+    useEffect(() => {
+        if (isAvatarModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [isAvatarModalOpen]);
+
+    // Generate user initials
     const getInitials = (name) => {
         if (!name) return 'U';
         const parts = name.trim().split(' ');
         return parts.length >= 2 ? (parts[0][0] + parts[1][0]).toUpperCase() : name.charAt(0).toUpperCase();
     };
 
-    // 1. User Selects File -> Open Cropper
+    // Handle file selection for cropping
     const onFileSelect = (e) => {
         if (e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
             const reader = new FileReader();
             reader.addEventListener('load', () => {
-                setSelectedImageForCrop(reader.result); // Set base64 URL for cropper
+                setSelectedImageForCrop(reader.result);
             });
             reader.readAsDataURL(file);
         }
     };
 
-    // 2. User Clicked "Save" in Cropper -> Compress -> Upload
+    // Handle cropped image upload
     const onCropComplete = async (croppedFile) => {
-        setSelectedImageForCrop(null); // Close Cropper
+        setSelectedImageForCrop(null);
         setUploadingAvatar(true);
 
         try {
-            // A. Compress the CROPPED file (It's now a perfect square, but might still be large)
             const compressedFile = await compressImage(croppedFile, 'avatar', userData.name);
-
-            // B. Upload
             const uploadedFile = await appwriteService.uploadProfilePicture(compressedFile);
             
             if (uploadedFile) {
@@ -70,6 +76,7 @@ function ProfilePictureManager({ onProfileUpdate }) {
         }
     };
 
+    // Remove profile picture
     const handleRemoveProfilePic = async () => {
         if (!fileId || !userData) return;
         setUploadingAvatar(true);
@@ -88,7 +95,7 @@ function ProfilePictureManager({ onProfileUpdate }) {
 
     return (
         <>
-            {/* 🚨 RENDER CROPPER IF IMAGE SELECTED */}
+            {/* Avatar cropper modal */}
             {selectedImageForCrop && (
                 <AvatarCropper 
                     imageSrc={selectedImageForCrop}
@@ -97,7 +104,7 @@ function ProfilePictureManager({ onProfileUpdate }) {
                 />
             )}
 
-            {/* 1. THE TRIGGER */}
+            {/* Avatar display with edit trigger */}
             <div 
                 onClick={() => setIsAvatarModalOpen(true)}
                 className="relative group w-16 h-16 rounded-full overflow-hidden border border-slate-200 shrink-0 cursor-pointer shadow-sm hover:shadow-md transition-all"
@@ -118,16 +125,22 @@ function ProfilePictureManager({ onProfileUpdate }) {
                 </div>
             </div>
 
-            {/* 2. THE SELECTION MODAL */}
-            {isAvatarModalOpen && !selectedImageForCrop && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Profile picture management modal */}
+            {isAvatarModalOpen && !selectedImageForCrop && createPortal(
+                <div 
+                    className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+                    style={{ animation: 'fadeIn 0.2s ease-out' }}
+                >
                     <div 
-                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
                         onClick={() => setIsAvatarModalOpen(false)}
-                    ></div>
+                    />
 
-                    <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform transition-all scale-100 overflow-hidden">
-                        
+                    <div 
+                        className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 overflow-hidden"
+                        style={{ animation: 'scaleIn 0.3s ease-out' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <button 
                             onClick={() => setIsAvatarModalOpen(false)}
                             className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-full transition-colors"
@@ -142,7 +155,7 @@ function ProfilePictureManager({ onProfileUpdate }) {
                             <div className="w-40 h-40 mx-auto rounded-full overflow-hidden shadow-inner border-4 border-slate-50 mb-8 relative group bg-slate-100">
                                 {uploadingAvatar ? (
                                     <div className="w-full h-full flex items-center justify-center bg-slate-50">
-                                        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                                        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                                     </div>
                                 ) : fileId ? (
                                     <img 
@@ -161,12 +174,12 @@ function ProfilePictureManager({ onProfileUpdate }) {
                                 <div className="relative">
                                     <input 
                                         type="file" 
-                                        onChange={onFileSelect} // 🚨 CHANGED: Calls onFileSelect
+                                        onChange={onFileSelect}
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                         accept="image/png, image/jpg, image/jpeg, image/webp" 
                                         disabled={uploadingAvatar}
                                     />
-                                    <button className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2">
+                                    <button className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                                         Upload New Photo
                                     </button>
@@ -176,7 +189,7 @@ function ProfilePictureManager({ onProfileUpdate }) {
                                     <button 
                                         onClick={handleRemoveProfilePic}
                                         disabled={uploadingAvatar}
-                                        className="w-full py-3 px-4 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 text-slate-700 hover:text-red-600 font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                                        className="w-full py-3 px-4 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 text-slate-700 hover:text-red-600 font-bold rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                         Remove Photo
@@ -192,7 +205,8 @@ function ProfilePictureManager({ onProfileUpdate }) {
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </>
     );

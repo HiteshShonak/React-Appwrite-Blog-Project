@@ -48,7 +48,7 @@ function PostCard({$id, Title, featuredImage}) {
                 )}
             </div>
 
-            <div className='p-5 grow flex flex-col justify-between'>
+            <div className='p-2.5 sm:p-4 grow flex flex-col justify-between'>
                 <div>
                     <h2 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-200 line-clamp-2 leading-tight">
                         {Title}
