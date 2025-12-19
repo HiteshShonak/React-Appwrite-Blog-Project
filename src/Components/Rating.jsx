@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux'; // ✅ ADD useDispatch
 import { createPortal } from 'react-dom';
 import appwriteService from '../appwrite/config';
+import { setMultipleRatings } from '../Store/ratingSlice'; // ✅ ADD THIS
+
 
 function Rating({ postId, postAuthorId }) {
     const [ratings, setRatings] = useState([]);
@@ -11,6 +13,7 @@ function Rating({ postId, postAuthorId }) {
     const [submitting, setSubmitting] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const userData = useSelector((state) => state.auth.userData);
+    const dispatch = useDispatch(); // ✅ ADD THIS
 
     // Check if current user is the post author
     const isAuthor = userData && postAuthorId && userData.$id === postAuthorId;
@@ -69,7 +72,26 @@ function Rating({ postId, postAuthorId }) {
 
         try {
             await appwriteService.setRating({ postId, userId: userData.$id, stars });
-            fetchRatings();
+            
+            // ✅ FETCH FRESH DATA AND UPDATE REDUX
+            const freshData = await appwriteService.getPostRatings(postId);
+            if (freshData && freshData.documents) {
+                setRatings(freshData.documents);
+                
+                // Calculate new average
+                const total = freshData.documents.reduce((acc, curr) => acc + curr.stars, 0);
+                const newAverage = parseFloat((total / freshData.documents.length).toFixed(1));
+                
+                // ✅ UPDATE REDUX CACHE (PostCards will auto-update!)
+                dispatch(setMultipleRatings({ [postId]: newAverage }));
+                
+                // Update user's rating state
+                const myRating = freshData.documents.find(r => r.userId === userData.$id);
+                if (myRating) {
+                    setUserRating(myRating.stars);
+                    setRatingId(myRating.$id);
+                }
+            }
         } catch (error) {
             console.error("Rating failed:", error);
             setRatings(previousRatings);
@@ -91,7 +113,24 @@ function Rating({ postId, postAuthorId }) {
 
         try {
             await appwriteService.deleteRating(ratingId);
-            fetchRatings();
+            
+            // ✅ FETCH FRESH DATA AND UPDATE REDUX
+            const freshData = await appwriteService.getPostRatings(postId);
+            if (freshData && freshData.documents) {
+                setRatings(freshData.documents);
+                
+                if (freshData.documents.length > 0) {
+                    // Calculate new average
+                    const total = freshData.documents.reduce((acc, curr) => acc + curr.stars, 0);
+                    const newAverage = parseFloat((total / freshData.documents.length).toFixed(1));
+                    
+                    // ✅ UPDATE REDUX CACHE
+                    dispatch(setMultipleRatings({ [postId]: newAverage }));
+                } else {
+                    // ✅ No ratings left, set to 0
+                    dispatch(setMultipleRatings({ [postId]: 0 }));
+                }
+            }
         } catch (error) {
             console.error("Delete failed:", error);
             setRatings(previousRatings);

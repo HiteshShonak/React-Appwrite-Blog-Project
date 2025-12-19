@@ -4,12 +4,13 @@ import appwriteService from '../appwrite/config.js';
 import { Container, Button } from '../Components';
 import { useSelector, useDispatch } from 'react-redux';
 import { setTrendingPosts } from '../Store/homeSlice';
+import { setMultipleRatings } from '../Store/ratingSlice';
 import { Link } from 'react-router-dom';
-
 
 // Memoized trending card component
 const TrendingCard = memo(({ post, onClick }) => {
-    const rating = post.rating;
+    const cachedRating = useSelector((state) => state.ratings?.postRatings?.[post.$id]);
+    const rating = cachedRating || null;
 
     return (
         <div 
@@ -45,7 +46,6 @@ const TrendingCard = memo(({ post, onClick }) => {
 
 TrendingCard.displayName = 'TrendingCard';
 
-
 function Home() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -56,13 +56,11 @@ function Home() {
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(trending.length === 0);
 
-    // Memoized trending carousel items
     const carouselItems = useMemo(() => {
         if (trending.length === 0) return [];
         return Array(6).fill(trending).flat();
     }, [trending]);
 
-    // Redirect from / to /home
     useEffect(() => {
         if (location.pathname === '/') {
             navigate('/home', { replace: true });
@@ -90,24 +88,32 @@ function Home() {
                     }
 
                     if (trendingResponse?.length > 0) {
-                        const enrichedTrending = await Promise.all(
-                            trendingResponse.map(async (post) => {
-                                try {
-                                    const ratingData = await appwriteService.getPostRatings(post.$id);
-                                    let avgRating = null;
-                                    
-                                    if (ratingData?.documents?.length > 0) {
-                                        const total = ratingData.documents.reduce((acc, curr) => acc + curr.stars, 0);
-                                        avgRating = (total / ratingData.documents.length).toFixed(1);
+                        // ✅ FETCH RATINGS FIRST (don't dispatch posts yet!)
+                        const ratingsPromises = trendingResponse.map(post => 
+                            appwriteService.getPostRatings(post.$id)
+                                .then(data => {
+                                    if (data && data.documents.length > 0) {
+                                        const total = data.documents.reduce((acc, curr) => acc + curr.stars, 0);
+                                        const avg = parseFloat((total / data.documents.length).toFixed(1));
+                                        return { postId: post.$id, rating: avg };
                                     }
-                                    return { ...post, rating: avgRating };
-                                } catch {
-                                    return { ...post, rating: null };
-                                }
-                            })
+                                    return null;
+                                })
+                                .catch(() => null)
                         );
+
+                        const results = await Promise.all(ratingsPromises);
                         
-                        dispatch(setTrendingPosts(enrichedTrending));
+                        const ratingsMap = {};
+                        results.forEach(result => {
+                            if (result) {
+                                ratingsMap[result.postId] = result.rating;
+                            }
+                        });
+
+                        // ✅ DISPATCH BOTH AT THE SAME TIME (single render!)
+                        dispatch(setMultipleRatings(ratingsMap));
+                        dispatch(setTrendingPosts(trendingResponse));
                     } else {
                         dispatch(setTrendingPosts([]));
                     }
@@ -115,6 +121,7 @@ function Home() {
                 } catch (error) {
                     console.error("Error fetching home data:", error);
                 } finally {
+                    // ✅ HIDE LOADING AFTER EVERYTHING IS READY
                     setLoading(false);
                 }
             };
@@ -131,7 +138,6 @@ function Home() {
         navigate(authStatus ? `/post/${postId}` : '/login');
     }, [authStatus, navigate]);
 
-    // Loading screen
     if (loading) {
         return (
             <div className="gpu-accelerate fixed inset-0 bg-white z-50 flex flex-col items-center justify-center overflow-hidden px-2 sm:px-4">

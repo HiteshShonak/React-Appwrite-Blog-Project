@@ -6,6 +6,7 @@ import appwriteService from '../../appwrite/config.js';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { compressImage } from '../../utils/compressImage';
+import { parseErrorMessage } from '../../utils/errorUtils'; 
 import { addPost, updatePost } from '../../Store/postSlice';
 import { addUserPost, updateUserPost } from '../../Store/dashboardSlice';
 import { updateTrendingPost } from '../../Store/homeSlice';
@@ -27,35 +28,48 @@ function PostForm({ post }) {
 
     const [error, setError] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    
+    // 🚨 INSTANT LOADER: Start true so it appears immediately
     const [isInitializing, setIsInitializing] = useState(true);
+    
     const [previewUrl, setPreviewUrl] = useState(post ? appwriteService.getFileView(post.featuredImage) : null);
     const [selectedFile, setSelectedFile] = useState(null);
 
-    // 🚨 NEW: Cropper State
+    // Cropper State
     const [isCropperOpen, setIsCropperOpen] = useState(false);
     const [tempImage, setTempImage] = useState(null);
 
     const isLoading = useMemo(() => isInitializing || submitting, [isInitializing, submitting]);
     const isEditMode = useMemo(() => !!post, [post]);
 
-    // Initialize component and preload image
+    // Initialize component (With Minimum "Premium" Wait Time)
     useEffect(() => {
         const init = async () => {
+            const tasks = [];
+
+            // 1. 🚨 OPTIMIZED WAIT TIME: 
+            // Reduced to 300ms. Fast enough to feel "instant", 
+            // but long enough to show the nice animation without flickering.
+            tasks.push(new Promise(resolve => setTimeout(resolve, 300)));
+
+            // 2. Preload Image (if exists)
             if (post?.featuredImage) {
                 const img = new Image();
                 img.src = appwriteService.getFileView(post.featuredImage);
-                await new Promise((resolve) => {
+                tasks.push(new Promise((resolve) => {
                     img.onload = resolve;
-                    img.onerror = resolve;
-                });
+                    img.onerror = resolve; // Proceed even if image fails
+                }));
             }
-            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Wait for both time + image
+            await Promise.all(tasks);
             setIsInitializing(false);
         };
         init();
     }, [post]);
 
-    // Lock scroll when loading or submitting
+    // Lock scroll when loading
     useEffect(() => {
         if (isLoading) {
             document.body.style.overflow = 'hidden';
@@ -65,7 +79,7 @@ function PostForm({ post }) {
         return () => { document.body.style.overflow = 'unset'; };
     }, [isLoading]);
 
-    // Restore draft from localStorage (only for new posts)
+    // Restore draft logic
     useEffect(() => {
         if (!post) {
             const savedDraft = localStorage.getItem("blog-post-draft");
@@ -85,7 +99,7 @@ function PostForm({ post }) {
         }
     }, [post, reset]);
 
-    // Save draft to localStorage on changes (only for new posts)
+    // Save draft logic
     useEffect(() => {
         if (!post) {
             const subscription = watch((value) => {
@@ -95,57 +109,65 @@ function PostForm({ post }) {
         }
     }, [watch, post]);
 
-    // 🚨 UPDATED: Handle image file selection (Opens Cropper)
     const handleFileChange = useCallback((e) => {
         if (e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
+            
+            // Validation: Size 10MB
+            if (file.size > 10 * 1024 * 1024) {
+                setError("File size too large. Please upload an image under 10MB.");
+                e.target.value = null; 
+                return;
+            }
+
+            // Validation: Type
+            if (!file.type.startsWith("image/")) {
+                setError("Invalid file type. Please upload a valid image (JPG, PNG, WebP).");
+                e.target.value = null;
+                return;
+            }
+
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = () => {
                 setTempImage(reader.result);
                 setIsCropperOpen(true);
             };
-            // Reset input value to allow re-selecting same file if needed
             e.target.value = null; 
         }
     }, []);
 
-    // 🚨 NEW: Handle Crop Completion
-    const handleCropDone = useCallback((croppedBlob) => {
+    const handleCropDone = useCallback(async (croppedBlob) => {
         setIsCropperOpen(false);
-        
-        // Convert Blob to File
-        // Note: Title/Type doesn't strictly matter here as compressImage will rename/retype it later
-        const file = new File([croppedBlob], "cropped-image.jpg", { type: "image/jpeg" });
-        
-        setSelectedFile(file);
-        setPreviewUrl(URL.createObjectURL(file));
-    }, []);
+        try {
+            const file = new File([croppedBlob], "cropped-image.jpg", { type: "image/jpeg" });
+            const compressed = await compressImage(file, 'post', getValues('title') || 'post', userData.name);
+            
+            setSelectedFile(compressed);
+            setPreviewUrl(URL.createObjectURL(compressed));
+        } catch (error) {
+            console.error("Image processing failed:", error);
+            setError("Failed to process image.");
+        }
+    }, [getValues, userData]);
 
-    // Convert title to URL-friendly slug
     const slugTransform = useCallback((value) => {
         if (value && typeof value === 'string') {
-            return value.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+            return value.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').substring(0, 30);
         }
         return '';
     }, []);
 
-    // Form submission handler
     const submit = useCallback(async (data) => {
         setError("");
         setSubmitting(true);
 
         try {
             if (data.status) data.status = data.status.toLowerCase();
-            
             let fileId = post ? undefined : null;
             
-            // Handle image upload if new file selected
             if (selectedFile) {
-                // compressImage logic remains exactly the same as you had it
-                const compressed = await compressImage(selectedFile, 'post', data.title, userData.name);
-                const file = await appwriteService.uploadFile(compressed);
-                
+                const file = await appwriteService.uploadFile(selectedFile);
                 if (file) {
                     fileId = file.$id;
                     if (post?.featuredImage) {
@@ -155,7 +177,6 @@ function PostForm({ post }) {
             }
 
             if (post) {
-                // Update existing post
                 const dbPost = await appwriteService.updatePost(post.$id, {
                     ...data,
                     featuredImage: fileId || undefined, 
@@ -171,7 +192,6 @@ function PostForm({ post }) {
                     navigate(`/post/${dbPost.$id}`);
                 }
             } else {
-                // Create new post
                 if (!fileId) throw new Error("⚠️ Please upload a featured image!");
 
                 data.featuredImage = fileId;
@@ -193,14 +213,13 @@ function PostForm({ post }) {
 
         } catch (error) {
             console.error("PostForm Error:", error);
-            setError(error.message || "Submission failed.");
+            setError(parseErrorMessage(error));
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setSubmitting(false);
         }
     }, [post, selectedFile, userData, dispatch, navigate]);
 
-    // Auto-generate slug from title
     useEffect(() => {
         const subscription = watch((value, { name }) => {
             if (name === 'title') {
@@ -210,10 +229,9 @@ function PostForm({ post }) {
         return () => subscription.unsubscribe();
     }, [watch, slugTransform, setValue]);
 
-    // Auto-dismiss error after 4 seconds
     useEffect(() => {
         if (error) {
-            const timer = setTimeout(() => setError(""), 4000);
+            const timer = setTimeout(() => setError(""), 6000);
             return () => clearTimeout(timer);
         }
     }, [error]);
@@ -224,7 +242,6 @@ function PostForm({ post }) {
 
     return (
         <>
-            {/* 🚨 NEW: Image Cropper Portal */}
             {isCropperOpen && (
                 <ImageCropper 
                     imageSrc={tempImage}
@@ -233,31 +250,39 @@ function PostForm({ post }) {
                     aspect={16 / 9}
                     cropShape="rect"
                     title="Crop Blog Header"
+                    className="!max-w-2xl"
                 />
             )}
 
-            {/* Loading overlay */}
+            {/* 🚨 MODERN SAAS LOADER */}
             {isLoading && createPortal(
-                <div 
-                    className="fixed inset-0 z-9999 flex items-center justify-center bg-slate-900/80 backdrop-blur-md"
-                    style={{ animation: 'fadeIn 0.2s ease-out' }}
-                >
-                    <div 
-                        className="relative flex flex-col items-center"
-                        style={{ animation: 'scaleIn 0.3s ease-out' }}
-                    >
-                        <div className="relative flex h-20 w-20 mb-6">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-30"></span>
-                          <span className="relative inline-flex rounded-full h-20 w-20 bg-indigo-600 shadow-xl shadow-indigo-500/30 items-center justify-center">
-                            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                          </span>
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/80 backdrop-blur-md transition-all duration-300">
+                    <div className="relative flex flex-col items-center">
+                        <div className="relative flex h-24 w-24 mb-8">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-20"></span>
+                            <span className="relative inline-flex rounded-full h-24 w-24 bg-gradient-to-tr from-indigo-600 to-indigo-500 shadow-2xl shadow-indigo-500/40 items-center justify-center border border-indigo-400/20">
+                                {isInitializing ? (
+                                    // 🚨 BOUNCING PENCIL ICON (For "Loading Editor")
+                                    <svg className="w-10 h-10 text-white animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                ) : (
+                                    // 🚨 BOUNCING UPLOAD ICON (For "Publishing")
+                                    <svg className="w-10 h-10 text-white animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                )}
+                            </span>
                         </div>
-                        <h3 className="text-2xl font-black text-white tracking-wide uppercase animate-pulse">
-                            {isInitializing ? 'Loading Editor' : (isEditMode ? 'Updating Post' : 'Publishing')}
-                        </h3>
-                        <p className="text-indigo-200 text-sm mt-2 font-medium">Please wait a moment...</p>
+                        
+                        <div className="text-center space-y-2">
+                            <h3 className="text-2xl font-black text-white tracking-widest uppercase animate-pulse">
+                                {isInitializing ? 'Initializing Editor' : (isEditMode ? 'Updating Post' : 'Publishing')}
+                            </h3>
+                            <p className="text-indigo-200/80 text-sm font-medium tracking-wide">
+                                {isInitializing ? 'Preparing your workspace...' : 'Just a moment while we save your work...'}
+                            </p>
+                        </div>
                     </div>
                 </div>,
                 document.body
@@ -265,7 +290,7 @@ function PostForm({ post }) {
 
             <form onSubmit={handleSubmit(submit)} className="flex flex-col lg:grid lg:grid-cols-3 gap-8 relative lg:items-start">
                 
-                {/* Error notification toast */}
+                {/* Error notification */}
                 {error && (
                     <div className='fixed top-20 left-1/2 transform -translate-x-1/2 z-40 w-full max-w-sm px-4 pointer-events-none'>
                         <div className='bg-rose-600 text-white px-6 py-4 rounded-xl shadow-2xl border border-rose-500 animate-bounce flex items-center gap-4'>
@@ -277,7 +302,6 @@ function PostForm({ post }) {
                     </div>
                 )}
 
-                {/* Content editor section */}
                 <div className='lg:col-span-2'>
                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-6">
                         <div className="border-b border-slate-100 pb-4 mb-4">
@@ -313,7 +337,6 @@ function PostForm({ post }) {
                     </div>
                 </div>
 
-                {/* Publishing settings sidebar */}
                 <div className='lg:col-span-1'>
                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6 sticky top-24">
                         <div className="border-b border-slate-100 pb-4">
@@ -330,7 +353,6 @@ function PostForm({ post }) {
                             />
                         </div>
 
-                        {/* Featured image upload - Aspect video, no stretching */}
                         <div className="space-y-2">
                             <label className="inline-block text-sm font-medium text-slate-700">Featured Image</label>
                             

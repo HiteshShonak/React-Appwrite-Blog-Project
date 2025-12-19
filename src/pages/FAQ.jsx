@@ -2,35 +2,39 @@ import React, { useEffect, useState } from 'react';
 import { Container } from '../Components/index.js';
 import { Link } from 'react-router-dom';
 
-// Collapsible FAQ item component
-const FaqItem = ({ question, answer }) => {
+// Collapsible FAQ item component with professional animations
+const FaqItem = ({ question, answer, index }) => {
     const [isOpen, setIsOpen] = useState(false);
 
-    useEffect(() => {
-                    window.scrollTo(0, 0);
-                }, []);
-
     return (
-        <div className="gpu-accelerate border-b border-slate-200 py-6 page-anim">
+        <div 
+            className="faq-item border-b border-slate-200 py-6"
+            style={{ animationDelay: `${index * 0.05}s` }}
+        >
             <button
-                className="interactive flex justify-between items-center w-full text-left focus:outline-none"
+                className="faq-button flex justify-between items-center w-full text-left focus:outline-none group"
                 onClick={() => setIsOpen(!isOpen)}
+                aria-expanded={isOpen}
             >
-                <span className="text-lg font-semibold text-slate-800">
+                <span className="text-lg font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors duration-300">
                     {question}
                 </span>
-                <span className="text-slate-500">
+                <span className="faq-icon-wrapper">
                     <svg 
-                        className={`gpu-accelerate w-6 h-6 faq-arrow ${isOpen ? 'faq-arrow-rotated' : ''}`} 
-                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        className={`faq-arrow ${isOpen ? 'faq-arrow-open' : ''}`} 
+                        width="24" 
+                        height="24" 
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        stroke="currentColor"
                     >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                 </span>
             </button>
             
-            <div className={`gpu-accelerate faq-answer-collapse ${isOpen ? 'faq-answer-expanded' : ''}`}>
-                <div className="text-slate-600 leading-relaxed pr-8">
+            <div className={`faq-content ${isOpen ? 'faq-content-open' : ''}`}>
+                <div className="faq-content-inner">
                     {answer}
                 </div>
             </div>
@@ -39,6 +43,10 @@ const FaqItem = ({ question, answer }) => {
 };
 
 function FAQ() {
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
+
     // FAQ data grouped by category
     const faqData = [
         {
@@ -53,7 +61,7 @@ function FAQ() {
                 {
                     q: "I forgot my password. How can I reset it?",
                     a: <>
-                        For security reasons, you cannot reset your password directly on this page. Please contact support via the <Link to="/contact" className="interactive text-indigo-600 font-semibold underline">Contact</Link> page to assist you with resetting your password.
+                        For security reasons, you cannot reset your password directly on this page. Please contact support via the <Link to="/contact" className="text-indigo-600 font-semibold underline hover:text-indigo-800 transition-colors">Contact</Link> page to assist you with resetting your password.
                     </>
                 },
                 {
@@ -113,12 +121,12 @@ function FAQ() {
     ];
 
     return (
-        <div className='w-full min-h-screen bg-slate-50 py-16 px-2 sm:px-4'>
+        <div className='w-full min-h-screen bg-slate-50 py-16 px-2 sm:px-4 page-anim'>
             <Container>
                 <div className="max-w-4xl mx-auto">
                     
                     {/* Page header */}
-                    <header className="text-center mb-12">
+                    <header className="text-center mb-12 faq-header">
                         <h1 className="text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
                             Frequently Asked Questions
                         </h1>
@@ -128,9 +136,12 @@ function FAQ() {
                     </header>
 
                     {/* FAQ sections */}
-                    <div className="gpu-accelerate bg-white rounded-3xl shadow-xl border border-slate-100 p-8 md:p-12 space-y-8">
-                        {faqData.map((section, index) => (
-                            <section key={index} className={index > 0 ? "pt-8 border-t border-slate-100" : ""}>
+                    <div className="faq-container bg-white rounded-3xl shadow-xl border border-slate-100 p-8 md:p-12 space-y-8">
+                        {faqData.map((section, sectionIndex) => (
+                            <section 
+                                key={sectionIndex} 
+                                className={`faq-section ${sectionIndex > 0 ? "pt-8 border-t border-slate-100" : ""}`}
+                            >
                                 <h2 className="text-2xl font-bold text-indigo-600 mb-6 flex items-center gap-3">
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -142,6 +153,7 @@ function FAQ() {
                                     {section.items.map((item, itemIndex) => (
                                         <FaqItem 
                                             key={itemIndex}
+                                            index={itemIndex}
                                             question={item.q}
                                             answer={item.a}
                                         />
@@ -152,14 +164,14 @@ function FAQ() {
                     </div>
 
                     {/* Contact support CTA */}
-                    <div className="gpu-accelerate mt-12 text-center bg-indigo-50 p-8 rounded-2xl border border-indigo-200">
+                    <div className="faq-cta mt-12 text-center bg-indigo-50 p-8 rounded-2xl border border-indigo-200">
                         <p className="text-xl font-semibold text-indigo-700 mb-4">
                             Still need help?
                         </p>
                         <p className="text-indigo-600 mb-6">
                             If you can't find an answer here, please contact us directly.
                         </p>
-                        <Link to="/contact" className="inline-block px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-md transition-all">
+                        <Link to="/contact" className="inline-block px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-md transition-all duration-300 hover:scale-105 active:scale-95">
                             Contact Support
                         </Link>
                     </div>

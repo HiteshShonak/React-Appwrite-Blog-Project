@@ -134,45 +134,165 @@ body {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* FAQ collapse animation - extra smooth */
-.faq-answer-collapse {
-  max-height: 0;
-  opacity: 0;
-  margin-top: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  overflow: hidden;
-  transform: translate3d(0, -10px, 0);
-  
-  transition: 
-    max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1) 0.05s,
-    margin-top 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.45s cubic-bezier(0.4, 0, 0.2, 1) 0.05s;
-  
-  will-change: max-height, opacity, transform;
+/* ========================================
+   ULTRA-SMOOTH FAQ ANIMATIONS
+   ======================================== */
+
+/* FAQ container entrance - faster */
+@keyframes faq-container-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
-.faq-answer-expanded {
-  max-height: 500px;
-  opacity: 1;
-  margin-top: 1rem;
-  padding-top: 0;
-  padding-bottom: 0.25rem;
-  transform: translate3d(0, 0, 0);
+.faq-container {
+  animation: faq-container-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+  will-change: transform, opacity;
 }
 
-/* FAQ arrow rotation - smoother timing */
+/* Faster staggered entrance */
+@keyframes faq-item-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(-8px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.faq-item {
+  animation: faq-item-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+/* Instant button hover */
+.faq-button {
+  position: relative;
+  transition: padding-left 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.faq-button:hover {
+  padding-left: 6px;
+}
+
+/* Instant icon background */
+.faq-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background-color: transparent;
+  transition: background-color 0.15s ease-out;
+}
+
+.faq-button:hover .faq-icon-wrapper {
+  background-color: rgba(79, 70, 229, 0.1);
+}
+
+/* Instant smooth arrow rotation */
 .faq-arrow {
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
-              color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 20px;
+  height: 20px;
+  color: #64748b;
+  transform: rotate(0deg);
+  transform-origin: center;
+  transition: 
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.15s ease-out;
   will-change: transform;
 }
 
-.faq-arrow-rotated {
+.faq-arrow-open {
   transform: rotate(180deg);
   color: #4f46e5;
 }
+
+/* Lightning-fast height animation with grid */
+.faq-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: grid-template-rows;
+}
+
+.faq-content-open {
+  grid-template-rows: 1fr;
+}
+
+/* Instant content fade-in */
+.faq-content-inner {
+  min-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  transform: translate3d(0, -5px, 0);
+  transition: 
+    opacity 0.2s ease-out 0.05s,
+    transform 0.2s ease-out 0.05s,
+    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #64748b;
+  line-height: 1.7;
+}
+
+.faq-content-open .faq-content-inner {
+  padding-top: 1rem;
+  padding-bottom: 0.25rem;
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Faster header fade */
+@keyframes faq-header-fade {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -15px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.faq-header {
+  animation: faq-header-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Faster CTA entrance */
+@keyframes faq-cta-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 15px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.faq-cta {
+  animation: faq-cta-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+  will-change: transform, opacity;
+}
+
+/* Minimal stagger delays */
+.faq-section {
+  animation: faq-item-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.faq-section:nth-child(1) { animation-delay: 0.05s; }
+.faq-section:nth-child(2) { animation-delay: 0.08s; }
+.faq-section:nth-child(3) { animation-delay: 0.11s; }
+
 
 /* Smooth transitions for interactive elements */
 button, a, .interactive {

@@ -13,7 +13,6 @@ import { hasViewedCookie, setViewedCookie } from "../utils/cookieUtils";
 import Comments from "../Components/Comments";
 import Rating from "../Components/Rating.jsx";
 
-
 export default function Post() {
     const { slug } = useParams();
     const navigate = useNavigate();
@@ -158,22 +157,68 @@ export default function Post() {
         }
     }, [post, dispatch, navigate]);
 
+    // 🎯 ENHANCED SKELETON - Matches exact post layout
     if (loading) {
         return (
-            <div className="py-8 sm:py-12 bg-slate-50 min-h-screen animate-pulse px-2 sm:px-4">
+            <div className="py-8 sm:py-12 bg-slate-50 min-h-screen px-2 sm:px-4">
                 <Container>
-                    <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-100">
-                        {/* 🚨 CHANGED: Fixed height classes -> aspect-video (Matches 16:9 crop) */}
-                        <div className="w-full aspect-video bg-slate-200"></div>
-                        <div className="p-6 sm:p-8 md:p-12">
-                            <div className="h-8 sm:h-10 bg-slate-200 rounded-lg w-3/4 mb-4 sm:mb-6"></div>
-                            <div className="space-y-3 sm:space-y-4">
+                    <article className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
+                        {/* Hero image skeleton */}
+                        <div className="w-full aspect-video bg-slate-200 animate-pulse"></div>
+                        
+                        {/* Content skeleton */}
+                        <div className="p-6 sm:p-8 md:p-12 pb-8 sm:pb-10">
+                            {/* Title + Author section */}
+                            <div className="mb-6 sm:mb-8 border-b border-slate-200 pb-4 sm:pb-6">
+                                {/* Title skeleton */}
+                                <div className="h-8 sm:h-10 md:h-12 bg-slate-200 rounded-lg w-4/5 mb-3 sm:mb-4 animate-pulse"></div>
+                                
+                                {/* Author info skeleton */}
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 animate-pulse">
+                                    <div className="flex items-center gap-2 sm:gap-3">
+                                        {/* Avatar circle */}
+                                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-200 shrink-0"></div>
+                                        <div className="flex flex-col gap-1.5">
+                                            <div className="h-4 bg-slate-200 rounded w-32"></div>
+                                            <div className="h-3 bg-slate-200 rounded w-24"></div>
+                                        </div>
+                                    </div>
+                                    {/* Views skeleton */}
+                                    <div className="h-5 bg-slate-200 rounded w-24"></div>
+                                </div>
+                            </div>
+                            
+                            {/* Content lines skeleton */}
+                            <div className="space-y-3 sm:space-y-4 animate-pulse">
                                 <div className="h-4 bg-slate-200 rounded w-full"></div>
+                                <div className="h-4 bg-slate-200 rounded w-full"></div>
+                                <div className="h-4 bg-slate-200 rounded w-11/12"></div>
                                 <div className="h-4 bg-slate-200 rounded w-full"></div>
                                 <div className="h-4 bg-slate-200 rounded w-5/6"></div>
+                                <div className="h-4 bg-slate-200 rounded w-full"></div>
+                                <div className="h-4 bg-slate-200 rounded w-10/12"></div>
                             </div>
                         </div>
-                    </div>
+                        
+                        {/* Separator */}
+                        <div className="border-t border-slate-200 mx-6 sm:mx-8 md:mx-12 mb-8 sm:mb-10"></div>
+                        
+                        {/* Rating + Comments skeleton */}
+                        <div className="px-6 sm:px-8 md:px-12 pb-8 sm:pb-12">
+                            <div className="max-w-3xl mx-auto space-y-8 sm:space-y-10">
+                                {/* Rating section skeleton */}
+                                <div className="h-16 bg-slate-200 rounded-xl w-full animate-pulse"></div>
+                                
+                                <div className="border-t border-slate-100"></div>
+                                
+                                {/* Comments section skeleton */}
+                                <div className="space-y-4 animate-pulse">
+                                    <div className="h-6 bg-slate-200 rounded w-32"></div>
+                                    <div className="h-24 bg-slate-200 rounded-xl w-full"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
                 </Container>
             </div>
         );
@@ -189,7 +234,6 @@ export default function Post() {
                     style={{ animation: 'fadeIn 0.2s ease-out' }}
                 >
                     <div 
-                        // 🚨 CHANGED: max-w-sm -> max-w-xs (Smaller modal width). Kept padding exactly as is.
                         className="gpu-accelerate bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 sm:p-8 border border-slate-100"
                         style={{ animation: 'scaleIn 0.3s ease-out' }}
                         onClick={(e) => e.stopPropagation()}
@@ -230,7 +274,6 @@ export default function Post() {
                 {/* Main article card */}
                 <article className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
                     
-                    {/* 🚨 CHANGED: Replaced fixed heights (h-48...) with aspect-video */}
                     <div className="relative w-full aspect-video group overflow-hidden">
                         <img 
                             src={appwriteService.getFileView(post.featuredImage)} 
@@ -240,7 +283,6 @@ export default function Post() {
                         
                         {/* Author action buttons */}
                         {isAuthor && (
-                            // 🚨 CHANGED: Added opacity-100 (mobile) lg:opacity-0 (desktop) group-hover:opacity-100 (hover)
                             <div className="absolute top-2 sm:top-6 right-2 sm:right-6 flex gap-1.5 sm:gap-3 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                 <Link to={`/edit-post/${post.$id}`}>
                                     <Button 
@@ -263,8 +305,6 @@ export default function Post() {
                                 </Button>
                             </div>
                         )}
-
-
                     </div>
 
                     {/* Content section */}

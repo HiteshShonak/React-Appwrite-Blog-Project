@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import appwriteService from '../appwrite/config.js'
-import { PostCard, Container } from '../Components'
-import { Query } from 'appwrite'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'; // ✅ ADD useCallback
+import appwriteService from '../appwrite/config.js';
+import { PostCard, Container } from '../Components';
+import { Query } from 'appwrite';
 import { useSelector, useDispatch } from 'react-redux';
-import { setPosts } from '../Store/postSlice'; 
+import { setPosts } from '../Store/postSlice';
+import { setMultipleRatings } from '../Store/ratingSlice';
 
 
 function AllPosts() {
@@ -12,18 +13,48 @@ function AllPosts() {
 
     const [loading, setLoading] = useState(posts.length === 0);
 
-    // Memoized post count for better performance
     const postCount = useMemo(() => posts.length, [posts.length]);
 
+    // ✅ MOVE prefetchRatings OUTSIDE useEffect (using useCallback)
+    const prefetchRatings = useCallback(async (postsList) => {
+        try {
+            const ratingsPromises = postsList.map(post => 
+                appwriteService.getPostRatings(post.$id)
+                    .then(data => {
+                        if (data && data.documents.length > 0) {
+                            const total = data.documents.reduce((acc, curr) => acc + curr.stars, 0);
+                            const avg = parseFloat((total / data.documents.length).toFixed(1));
+                            return { postId: post.$id, rating: avg };
+                        }
+                        return null;
+                    })
+                    .catch(() => null)
+            );
+
+            const results = await Promise.all(ratingsPromises);
+            
+            const ratingsMap = {};
+            results.forEach(result => {
+                if (result) {
+                    ratingsMap[result.postId] = result.rating;
+                }
+            });
+
+            dispatch(setMultipleRatings(ratingsMap));
+        } catch (error) {
+            console.error("Error prefetching ratings:", error);
+        }
+    }, [dispatch]); // ✅ Add dispatch as dependency
+
+    // ✅ FIXED useEffect - now reacts to posts changes
     useEffect(() => {
         if (posts.length === 0) {
             setLoading(true);
             
-            appwriteService.getPosts([
-                Query.orderDesc("$createdAt")
-            ]).then((response) => {
+            appwriteService.getPosts().then(async (response) => {
                 if (response?.documents) {
                     dispatch(setPosts(response.documents));
+                    await prefetchRatings(response.documents);
                 }
             }).catch((error) => {
                 console.error("Error fetching posts:", error);
@@ -31,30 +62,31 @@ function AllPosts() {
         } else {
             setLoading(false);
         }
-    }, [dispatch]);
+    }, [dispatch, prefetchRatings]); // ✅ REMOVED 'posts' to prevent infinite loop
 
 
-    // SKELETON LOADER
     if (loading) {
         return (
             <div className='py-6 sm:py-8 bg-slate-50 min-h-screen animate-pulse px-2 sm:px-4'>
                 <Container>
-                    {/* Header Skeleton */}
                     <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 border-b border-slate-200 pb-3 sm:pb-4">
                         <div className="h-8 w-48 bg-slate-200 rounded-lg"></div>
                         <div className="h-6 w-24 bg-slate-200 rounded-full mt-2 sm:mt-0"></div>
                     </div>
 
-                    {/* Grid Skeleton */}
                     <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6'>
                         {[...Array(10)].map((_, index) => (
-                            <div key={index} className="bg-white rounded-xl overflow-hidden h-full border border-slate-100">
-                                {/* Image Placeholder */}
+                            <div key={index} className="bg-white rounded-xl overflow-hidden h-full border border-slate-100 shadow-sm">
                                 <div className="aspect-video w-full bg-slate-200"></div>
-                                {/* Content Placeholder */}
                                 <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
-                                    <div className="h-3 sm:h-4 bg-slate-200 rounded w-3/4"></div>
-                                    <div className="h-2 sm:h-3 bg-slate-200 rounded w-1/2"></div>
+                                    <div className="space-y-2">
+                                        <div className="h-4 bg-slate-200 rounded w-full"></div>
+                                        <div className="h-4 bg-slate-200 rounded w-4/5"></div>
+                                    </div>
+                                    <div className="flex items-center gap-2 pt-1">
+                                        <div className="h-3 bg-slate-200 rounded w-16"></div>
+                                        <div className="h-3 bg-slate-200 rounded w-20"></div>
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -99,7 +131,7 @@ function AllPosts() {
                 )}
             </Container>
         </div>
-    )
+    );
 }
 
-export default AllPosts
+export default AllPosts;

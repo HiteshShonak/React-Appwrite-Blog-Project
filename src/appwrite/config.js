@@ -33,9 +33,18 @@ export class Service {
             );
         } catch (error) {
             console.log("Appwrite Service :: createPost :: error", error);
+            
+            // 🚨 CLEANUP: If post creation fails, delete the image we just uploaded
+            if (featuredImage) {
+                await this.deleteFile(featuredImage);
+            }
+
+            // Re-throw the error so the UI (PostForm) knows the submission failed
+            throw error; 
         }
     }
 
+    // Updates an existing post by its slug
     // Updates an existing post by its slug
     async updatePost(slug, { title, content, featuredImage, status }) {
         try {
@@ -52,18 +61,31 @@ export class Service {
             );
         } catch (error) {
             console.log("Appwrite Service :: updatePost :: error", error);
+            throw error; // 🚨 CRITICAL: This allows the error to bubble up to PostForm
         }
     }
 
-    // Deletes a post document
+    // Deletes a post document AND its associated image
     async deletePost(slug) {
         try {
-            await this.databases.deleteDocument(
-                conf.appwriteDatabaseId,
-                conf.appwriteCollectionId,
-                slug
-            );
-            return true;
+            // 1. Get the post first to find the image ID
+            const post = await this.getPost(slug);
+            
+            if (post) {
+                // 2. Delete the Document
+                await this.databases.deleteDocument(
+                    conf.appwriteDatabaseId,
+                    conf.appwriteCollectionId,
+                    slug
+                );
+
+                // 3. Automatically delete the image (Cleanup)
+                if (post.featuredImage) {
+                    await this.deleteFile(post.featuredImage);
+                }
+                return true;
+            }
+            return false;
         } catch (error) {
             console.log("Appwrite Service :: deletePost :: error", error);
             return false;
@@ -85,7 +107,7 @@ export class Service {
     }
 
     // Retrieves a list of posts (defaults to active status)
-    async getPosts(queries = [Query.equal("Status", "active"),Query.orderDesc("$createdAt")]) {
+    async getPosts(queries = [Query.equal("Status", "active"), Query.orderDesc("$createdAt")]) {
         try {
             return await this.databases.listDocuments(
                 conf.appwriteDatabaseId,
@@ -394,16 +416,15 @@ export class Service {
         }
     }
 
-    // Hybrid Trending Logic (Time Window + Scoring)
+    // Hybrid Trending Logic (Time Window + Scoring + Smart Backfill)
     async getTrendingPosts() {
         try {
-            // 1. Define Time Window (Last 7 Days - tightened for freshness)
+            // 1. Define Time Window (Last 10 Days)
             const date = new Date();
             date.setDate(date.getDate() - 10);
 
-            // 2. Fetch Candidate Posts
-            // Reduced limit to 40 to prevent hitting rate limits when fetching ratings
-            const response = await this.databases.listDocuments(
+            // 2. Fetch Recent Trending Candidates
+            let response = await this.databases.listDocuments(
                 conf.appwriteDatabaseId,
                 conf.appwriteCollectionId,
                 [
@@ -413,14 +434,13 @@ export class Service {
                 ]
             );
 
-            if (!response || !response.documents) return [];
+            let initialPosts = response ? response.documents : [];
 
-            // 3. Fetch Ratings & Calculate Score for each post
-            const scoredPosts = await Promise.all(response.documents.map(async (post) => {
+            // 3. Score & Sort the Recent Posts
+            let scoredPosts = await Promise.all(initialPosts.map(async (post) => {
                 const views = post.Views || 0;
                 
-                // A. Fetch Rating for this specific post
-                // We use 'this.getPostRatings' assuming it exists in this class
+                // Fetch Rating
                 let averageRating = 0;
                 try {
                     const ratingData = await this.getPostRatings(post.$id);
@@ -429,42 +449,56 @@ export class Service {
                         averageRating = totalStars / ratingData.documents.length;
                     }
                 } catch (e) {
-                    // If rating fetch fails, assume neutral
                     averageRating = 0;
                 }
 
-                // B. Time Decay
+                // Time Decay
                 const publishedDate = new Date(post.$createdAt);
                 const now = new Date();
                 const hoursSincePublished = Math.max(0, (now - publishedDate) / (1000 * 60 * 60));
 
-                // C. 🧮 NEW FORMULA: (Views * Quality) / Time
-                
-                // Quality Multiplier:
-                // No rating = 1x (Neutral)
-                // 5 Stars   = 2x (Boost)
-                // 1 Star    = 0.5x (Penalty)
-                // Formula: 1 + ((Rating - 3) * 0.25) -> range 0.5 to 1.5 roughly, normalized below:
-                
+                // Quality Multiplier
                 let qualityMultiplier = 1;
                 if (averageRating > 0) {
-                    // 5 stars becomes 2.5 multiplier, 1 star becomes 0.5
                     qualityMultiplier = 0.5 + (averageRating * 0.4); 
                 }
 
-                // Base Gravity: Views / (Time + 2)^1.5
                 const gravity = views / Math.pow(hoursSincePublished + 2, 1.5);
-                
-                // Final Score
                 const finalScore = gravity * qualityMultiplier;
 
                 return { ...post, trendScore: finalScore };
             }));
 
-            // 4. Sort Descending
+            // Sort Recent Posts by Score
             scoredPosts.sort((a, b) => b.trendScore - a.trendScore);
 
-            // 5. Return Top 6
+            // 4. SMART BACKFILL: Check if we have less than 6 posts
+            if (scoredPosts.length < 6) {
+                const needed = 6 - scoredPosts.length;
+                
+                // Fetch "All-Time Best" to fill the gap
+                // We exclude the ones we already have to avoid duplicates
+                const existingIds = scoredPosts.map(p => p.$id);
+                
+                const fallbackResponse = await this.databases.listDocuments(
+                    conf.appwriteDatabaseId,
+                    conf.appwriteCollectionId,
+                    [
+                        Query.equal("Status", "active"),
+                        Query.orderDesc("Views"), // Most viewed of all time
+                        Query.limit(20) // Fetch enough to find non-duplicates
+                    ]
+                );
+
+                if (fallbackResponse && fallbackResponse.documents) {
+                    const fallbackPosts = fallbackResponse.documents.filter(p => !existingIds.includes(p.$id));
+                    
+                    // Add the best fallback posts to fill the quota
+                    scoredPosts = [...scoredPosts, ...fallbackPosts.slice(0, needed)];
+                }
+            }
+
+            // 5. Final Safety Slice (Return exactly top 6)
             return scoredPosts.slice(0, 6);
 
         } catch (error) {

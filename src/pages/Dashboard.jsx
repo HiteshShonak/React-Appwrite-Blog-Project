@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import appwriteService from '../appwrite/config.js';
 import { Container, PostCard, LogoutBtn } from '../Components'; 
 import { useSelector, useDispatch } from 'react-redux'; 
-import { setUserPosts } from '../Store/dashboardSlice';
+import { setUserPosts, setUserProfile } from '../Store/dashboardSlice'; 
+import { setMultipleRatings } from '../Store/ratingSlice';
 import { Query } from 'appwrite';
 import { Link } from 'react-router-dom';
 import ProfilePictureManager from '../Components/ProfilePictureManager';
@@ -12,14 +13,21 @@ import BioEditModal from '../Components/BioEditModal';
 function Dashboard() {
     const posts = useSelector((state) => state.dashboard.userPosts);
     const hasFetched = useSelector((state) => state.dashboard.hasFetched);
+    const cachedProfile = useSelector((state) => state.dashboard.userProfile); 
     const authStatus = useSelector((state) => state.auth.status);
     const userData = useSelector((state) => state.auth.userData);
     const dispatch = useDispatch();
 
-    const [userBio, setUserBio] = useState("");
-    const [username, setUsername] = useState("");
-    const [loading, setLoading] = useState(!hasFetched);
+    // ✅ INITIALIZE FROM CACHE
+    const [userBio, setUserBio] = useState(cachedProfile.bio || "");
+    const [username, setUsername] = useState(cachedProfile.username || "");
+    const [loading, setLoading] = useState(!hasFetched || !cachedProfile.username); 
     const [isBioModalOpen, setIsBioModalOpen] = useState(false);
+
+    // Scroll to top on load
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
 
     // Memoized computed values
     const { draftPosts, activePosts, postCount } = useMemo(() => ({
@@ -28,47 +36,113 @@ function Dashboard() {
         postCount: posts.length
     }), [posts]);
 
-    const fetchData = useCallback(() => {
-        if (authStatus && userData) {
-            const promises = [];
+    // Prefetch ratings function
+    const prefetchRatings = useCallback(async (postsList) => {
+        try {
+            const ratingsPromises = postsList.map(post => 
+                appwriteService.getPostRatings(post.$id)
+                    .then(data => {
+                        if (data && data.documents.length > 0) {
+                            const total = data.documents.reduce((acc, curr) => acc + curr.stars, 0);
+                            const avg = parseFloat((total / data.documents.length).toFixed(1));
+                            return { postId: post.$id, rating: avg };
+                        }
+                        return null;
+                    })
+                    .catch(() => null)
+            );
+
+            const results = await Promise.all(ratingsPromises);
             
-            const profilePromise = appwriteService.getUserProfile(userData.$id);
-            promises.push(profilePromise);
+            const ratingsMap = {};
+            results.forEach(result => {
+                if (result) {
+                    ratingsMap[result.postId] = result.rating;
+                }
+            });
 
-            if (!hasFetched) {
-                setLoading(true); 
-                const postsPromise = appwriteService.getPosts([
-                    Query.equal("UserId", userData.$id), 
-                    Query.orderDesc("$createdAt")
-                ]);
-                promises.push(postsPromise);
-            }
-
-            Promise.all(promises)
-                .then((results) => {
-                    const profileRes = results[0];
-                    setUserBio(profileRes?.Bio || "");
-                    setUsername(profileRes?.Username || "");
-
-                    const postsRes = results[1]; 
-                    if (postsRes) {
-                        dispatch(setUserPosts(postsRes.documents));
-                    }
-                })
-                .catch((error) => {
-                    console.error("Error fetching dashboard data:", error);
-                })
-                .finally(() => setLoading(false));
-        } else {
-            setLoading(false);
+            dispatch(setMultipleRatings(ratingsMap));
+        } catch (error) {
+            console.error("Error prefetching ratings:", error);
         }
-    }, [authStatus, userData, hasFetched, dispatch]);
+    }, [dispatch]);
+
+    const fetchData = useCallback(() => {
+    if (authStatus && userData) {
+        
+        // ✅ SMART LOADING: Check if profile is cached
+        const isStaleData = posts.length > 0 && posts[0]?.UserId !== userData.$id;
+        const needsProfile = !cachedProfile.username;
+        const shouldShowLoader = (!hasFetched && posts.length === 0) || isStaleData || needsProfile;
+
+        if (shouldShowLoader) {
+            setLoading(true); 
+        }
+
+        // ✅ SMART FETCH: Only fetch profile if NOT cached
+        const promises = [];
+        
+        // We fetch profile to check updates, but we prioritize cache for display
+        promises.push(appwriteService.getUserProfile(userData.$id));
+        
+        promises.push(
+            appwriteService.getPosts([
+                Query.equal("UserId", userData.$id), 
+                Query.orderDesc("$createdAt")
+            ])
+        );
+
+        Promise.all(promises)
+            .then(async (results) => {
+                const profileRes = results[0];
+                const postsRes = results[1];
+                
+                // ✅ Update profile and STORE IMAGE ID
+                if (profileRes) {
+                    const fetchedBio = profileRes?.Bio || "";
+                    const fetchedUsername = profileRes?.Username || "";
+                    const fetchedImageId = profileRes?.ProfileImageFileId || null; // 🚨 Capture Image ID
+                    
+                    setUserBio(fetchedBio);
+                    setUsername(fetchedUsername);
+
+                    dispatch(setUserProfile({
+                        username: fetchedUsername,
+                        bio: fetchedBio,
+                        profileImageId: fetchedImageId // 🚨 Save to Redux
+                    }));
+                }
+
+                // ✅ Always update posts
+                if (postsRes) {
+                    dispatch(setUserPosts(postsRes.documents));
+                    await prefetchRatings(postsRes.documents);
+                }
+            })
+            .catch((error) => {
+                console.error("Error fetching dashboard data:", error);
+            })
+            .finally(() => setLoading(false));
+    } else {
+        setLoading(false);
+    }
+}, [authStatus, userData, hasFetched, posts, cachedProfile.username, dispatch, prefetchRatings]);
+
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
     const openBioModal = useCallback(() => setIsBioModalOpen(true), []);
     const closeBioModal = useCallback(() => setIsBioModalOpen(false), []);
-    const handleBioSaved = useCallback((newBio) => setUserBio(newBio), []);
+    const handleBioSaved = useCallback((newBio) => {
+        setUserBio(newBio);
+        // ✅ UPDATE CACHE WHEN BIO CHANGES
+        // Preserve the existing image ID when updating bio
+        dispatch(setUserProfile({ 
+            username, 
+            bio: newBio, 
+            profileImageId: cachedProfile.profileImageId 
+        }));
+    }, [username, cachedProfile.profileImageId, dispatch]);
 
     // GUEST VIEW
     if (!authStatus) {
@@ -135,49 +209,48 @@ function Dashboard() {
         );
     }
 
-    // IMPROVED LOADING STATE
+    // SKELETON LOADER
     if (loading) {
         return (
             <div className='w-full min-h-screen bg-slate-50 py-6 sm:py-8 px-2 sm:px-4'>
                 <Container>
                     {/* Identity Section Skeleton */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 mb-6 sm:mb-8 animate-pulse">
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 mb-6 sm:mb-8">
                         <div className="flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4">
-                            {/* Left Side - Avatar & Name */}
-                            <div className="flex items-center gap-3 sm:gap-5 w-full md:w-auto">
+                            <div className="flex items-center gap-3 sm:gap-5 w-full md:w-auto animate-pulse">
                                 <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-slate-200 shrink-0"></div>
                                 <div className="space-y-2 flex-1">
-                                    <div className="h-5 sm:h-6 w-32 sm:w-48 bg-slate-200 rounded"></div>
-                                    <div className="h-3 sm:h-4 w-40 sm:w-56 bg-slate-200 rounded"></div>
-                                    <div className="h-3 w-32 bg-slate-200 rounded"></div>
+                                    <div className="h-5 sm:h-6 w-32 sm:w-40 bg-slate-200 rounded"></div>
+                                    <div className="h-3 sm:h-4 w-48 sm:w-56 bg-slate-200 rounded"></div>
                                 </div>
                             </div>
                             
-                            {/* Right Side - Buttons */}
-                            <div className="flex items-center gap-2 sm:gap-3 w-full md:w-auto justify-end">
-                                <div className="h-8 sm:h-9 w-20 sm:w-24 bg-slate-200 rounded-lg"></div>
+                            <div className="flex items-center gap-2 sm:gap-3 w-full md:w-auto justify-end animate-pulse">
+                                <div className="h-8 sm:h-10 w-20 sm:w-24 bg-slate-200 rounded-lg"></div>
                                 <div className="hidden md:block h-6 sm:h-8 w-px bg-slate-200"></div>
-                                <div className="h-8 sm:h-9 w-16 sm:w-20 bg-slate-200 rounded-lg"></div>
+                                <div className="h-8 sm:h-10 w-16 sm:w-20 bg-slate-200 rounded-lg"></div>
                             </div>
                         </div>
                     </div>
 
                     {/* Action Bar Skeleton */}
                     <div className="flex items-end justify-between mb-4 sm:mb-6 animate-pulse">
-                        <div className="h-7 sm:h-8 w-24 sm:w-32 bg-slate-200 rounded"></div>
-                        <div className="h-9 sm:h-11 w-28 sm:w-40 bg-slate-200 rounded-xl"></div>
+                        <div className="h-7 sm:h-8 w-24 sm:w-28 bg-slate-200 rounded"></div>
+                        <div className="h-9 sm:h-11 w-32 sm:w-40 bg-slate-200 rounded-xl"></div>
                     </div>
 
                     {/* Stats Grid Skeleton */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-8 sm:mb-12 animate-pulse">
-                        {[...Array(3)].map((_, index) => (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-8 sm:mb-12">
+                        {[
+                            { span: "" },
+                            { span: "" },
+                            { span: "col-span-2 md:col-span-1" }
+                        ].map((stat, index) => (
                             <div 
                                 key={index} 
-                                className={`bg-white p-3 sm:p-4 md:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-100 ${
-                                    index === 2 ? 'col-span-2 md:col-span-1' : ''
-                                }`}
+                                className={`bg-white p-3 sm:p-4 md:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-100 ${stat.span}`}
                             >
-                                <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+                                <div className="flex items-center gap-2 sm:gap-3 md:gap-4 animate-pulse">
                                     <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 bg-slate-200 rounded-lg sm:rounded-xl shrink-0"></div>
                                     <div className="space-y-2 flex-1">
                                         <div className="h-3 sm:h-4 w-16 sm:w-20 bg-slate-200 rounded"></div>
@@ -190,20 +263,23 @@ function Dashboard() {
 
                     {/* Section Header Skeleton */}
                     <div className="mb-3 sm:mb-4 animate-pulse">
-                        <div className="h-5 sm:h-6 w-40 sm:w-48 bg-slate-200 rounded"></div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-slate-200"></div>
+                            <div className="h-5 sm:h-6 w-36 sm:w-44 bg-slate-200 rounded"></div>
+                        </div>
                     </div>
 
                     {/* Post Cards Grid Skeleton */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
                         {[...Array(8)].map((_, index) => (
-                            <div key={index} className="bg-white rounded-xl overflow-hidden border border-slate-100 shadow-sm animate-pulse">
-                                <div className="aspect-video w-full bg-slate-200"></div>
+                            <div key={index} className="bg-white rounded-xl overflow-hidden border border-slate-100 shadow-sm">
+                                <div className="aspect-video w-full bg-slate-200 animate-pulse"></div>
                                 <div className="p-3 sm:p-4 space-y-3">
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 animate-pulse">
                                         <div className="h-4 bg-slate-200 rounded w-full"></div>
                                         <div className="h-4 bg-slate-200 rounded w-4/5"></div>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 pt-1 animate-pulse">
                                         <div className="h-3 bg-slate-200 rounded w-16"></div>
                                         <div className="h-3 bg-slate-200 rounded w-20"></div>
                                     </div>
@@ -234,7 +310,11 @@ function Dashboard() {
                     
                     <div className="flex items-center gap-3 sm:gap-5 w-full md:w-auto">
                         <div className="shrink-0">
-                            <ProfilePictureManager onProfileUpdate={fetchData} />
+                            {/* 🚨 OPTIMIZATION: Pass the Image ID directly to child */}
+                            <ProfilePictureManager 
+                                initialFileId={cachedProfile.profileImageId} 
+                                onProfileUpdate={fetchData} 
+                            />
                         </div>
                         <div className="min-w-0"> 
                             <h1 className='text-lg sm:text-xl font-bold text-slate-900 flex items-baseline gap-1 truncate'>

@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import authService from '../../appwrite/auth.js';
 import { logout } from '../../Store/authSlice.js';
+import { resetDashboard } from '../../Store/dashboardSlice.js';
 
 
 function LogoutBtn({ className = "" }) {
@@ -12,8 +13,9 @@ function LogoutBtn({ className = "" }) {
     const logoutHandler = () => {
         authService.logout()
         .then(() => {
-            dispatch(logout());
-            navigate('/home'); 
+            dispatch(logout()); // Clear Auth
+            dispatch(resetDashboard()); // ✅ Clear posts + profile cache
+            navigate('/dashboard'); 
         })
         .catch((error) => {
             console.error("Logout failed:", error);

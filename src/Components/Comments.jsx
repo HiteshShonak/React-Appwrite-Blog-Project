@@ -5,7 +5,6 @@ import appwriteService from '../appwrite/config';
 import { Link } from 'react-router-dom';
 import { cacheUserProfile } from '../Store/usersSlice';
 
-
 // Memoized individual comment component
 const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, postAuthorId }) => {
     const dispatch = useDispatch();
@@ -17,7 +16,6 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
     const [authorAvatarUrl, setAuthorAvatarUrl] = useState(cachedAuthor?.avatar || null);
     const [authorUsername, setAuthorUsername] = useState(cachedAuthor?.username || null);
     
-    // Memoized computed values
     const isLiked = useMemo(() => 
         comment.likedBy && userData && comment.likedBy.includes(userData.$id),
         [comment.likedBy, userData]
@@ -26,12 +24,21 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
     const isTemp = useMemo(() => comment.$id.startsWith('temp-'), [comment.$id]);
     const isPostAuthor = useMemo(() => postAuthorId && comment.userId === postAuthorId, [postAuthorId, comment.userId]);
     const isOwnComment = useMemo(() => userData && userData.$id === comment.userId, [userData, comment.userId]);
-    const formattedDate = useMemo(() => 
-        isTemp ? 'Posting...' : new Date(comment.$createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-        [comment.$createdAt, isTemp]
-    );
+    
+    const formattedDate = useMemo(() => {
+        if (isTemp) return 'Posting...';
+        
+        const date = new Date(comment.$createdAt);
+        const now = new Date();
+        const isCurrentYear = date.getFullYear() === now.getFullYear();
 
-    // Fetch author profile if not cached
+        return date.toLocaleDateString(undefined, { 
+            year: isCurrentYear ? undefined : 'numeric',
+            month: 'short', 
+            day: 'numeric' 
+        });
+    }, [comment.$createdAt, isTemp]);
+
     useEffect(() => {
         if (!isTemp && !cachedAuthor && comment.userId) {
             appwriteService.getUserProfile(comment.userId)
@@ -59,16 +66,15 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
     }, [comment.userId, isTemp, cachedAuthor, dispatch]);
 
     const getInitials = useCallback((name) => name ? name.charAt(0).toUpperCase() : '?', []);
-
     const handleDelete = useCallback(() => setDeleteCommentId(comment.$id), [comment.$id, setDeleteCommentId]);
     const handleLike = useCallback(() => toggleLike(comment), [comment, toggleLike]);
 
     return (
-        <div className={`flex gap-2 pt-2 first:pt-0 group ${isTemp ? 'opacity-70' : 'opacity-100'}`}>
+        <div className={`flex gap-3 pt-3 first:pt-0 group ${isTemp ? 'opacity-70' : 'opacity-100'}`}>
             
             <Link 
                 to={authorUsername ? `/author/${authorUsername}` : '#'} 
-                className="interactive gpu-accelerate shrink-0 w-10 h-10 rounded-full bg-white text-indigo-600 flex items-center justify-center font-bold text-sm border border-indigo-100 hover:ring-4 hover:ring-indigo-50 transition-all shadow-sm overflow-hidden"
+                className="interactive gpu-accelerate shrink-0 w-8 h-8 rounded-full bg-white text-indigo-600 flex items-center justify-center font-bold text-xs border border-indigo-100 hover:ring-2 hover:ring-indigo-50 transition-all shadow-sm overflow-hidden mt-1"
             >
                 {authorAvatarUrl ? (
                     <img 
@@ -82,58 +88,57 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
             </Link>
 
             <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 flex-wrap">
-                    <Link 
-                        to={authorUsername ? `/author/${authorUsername}` : '#'} 
-                        className="interactive font-bold text-slate-800 text-sm hover:text-indigo-600 hover:underline transition-colors"
-                    >
-                        {comment.authorName}
-                    </Link>
+                <div className="bg-slate-50 rounded-2xl px-4 py-3 border border-slate-100 relative group/bubble">
                     
-                    {isPostAuthor && (
-                        <span className="bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                            Author
-                        </span>
-                    )}
+                    {/* Header Row */}
+                    <div className="flex justify-between items-start mb-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <Link 
+                                to={authorUsername ? `/author/${authorUsername}` : '#'} 
+                                className="interactive font-bold text-slate-900 text-sm hover:text-indigo-600 hover:underline transition-colors"
+                            >
+                                {authorUsername ? `@${authorUsername}` : comment.authorName}
+                            </Link>
+                            
+                            {isPostAuthor && (
+                                <span className="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                                    Author
+                                </span>
+                            )}
 
-                    <span className="text-xs text-slate-300">•</span>
-                    <span className="text-xs text-slate-400 font-medium">
-                        {formattedDate}
-                    </span>
+                            <span className="text-xs text-slate-400 font-medium">
+                                • {formattedDate}
+                            </span>
+                        </div>
+
+                        {/* Delete Button - Only trash icon */}
+                        {isOwnComment && !isTemp && (
+                            <button 
+                                onClick={handleDelete} 
+                                className="text-slate-300 hover:text-rose-500 transition-colors p-1 rounded-full hover:bg-rose-50 opacity-100 lg:opacity-0 lg:group-hover/bubble:opacity-100"
+                                aria-label="Delete comment"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
+
+                    <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">{comment.content}</p>
                 </div>
-                <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{comment.content}</p>
                 
-                {/* Delete button - smart detection: always visible on touch, hover on pointer devices */}
-                <div className="flex items-center gap-2 mt-1 mb-1">
-                    {isOwnComment && !isTemp && (
-                        <button 
-                            onClick={handleDelete} 
-                            className="text-[11px] font-bold text-slate-400 hover:text-rose-500 transition-colors opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
-                        >
-                            Delete
-                        </button>
-                    )}
+                {/* Action Bar - Only Like button, removed duplicate Delete text button */}
+                <div className="flex items-center gap-4 mt-1 ml-2">
+                    <button 
+                        onClick={handleLike}
+                        disabled={!userData || isTemp}
+                        className={`text-xs font-semibold flex items-center gap-1 transition-colors ${isLiked ? 'text-rose-500' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                        {isLiked ? 'Liked' : 'Like'}
+                        {likeCount > 0 && <span className="bg-slate-100 px-1.5 rounded-full text-[10px]">{likeCount}</span>}
+                    </button>
                 </div>
-            </div>
-
-            <div className="shrink-0 self-center pl-2">
-                <button 
-                    onClick={handleLike}
-                    className={`interactive gpu-accelerate flex flex-col items-center gap-0.5 transition-all transform active:scale-90 ${isLiked ? 'text-rose-500' : 'text-slate-300 hover:text-rose-400'}`}
-                    disabled={!userData || isTemp}
-                    aria-label={isLiked ? 'Unlike comment' : 'Like comment'}
-                >
-                    {isLiked ? (
-                        <svg className="w-5 h-5 fill-current drop-shadow-sm" viewBox="0 0 24 24">
-                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                        </svg>
-                    ) : (
-                        <svg className="w-5 h-5 fill-none stroke-current stroke-[2.5]" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
-                        </svg>
-                    )}
-                    <span className="text-[10px] font-bold">{likeCount > 0 ? likeCount : ''}</span>
-                </button>
             </div>
         </div>
     );
@@ -149,6 +154,8 @@ function Comments({ postId, postAuthorId }) {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [deleteCommentId, setDeleteCommentId] = useState(null);
+    const [currentUserAvatar, setCurrentUserAvatar] = useState(null);
+    
     const userData = useSelector((state) => state.auth.userData);
 
     // Scroll lock when modal is open
@@ -160,6 +167,17 @@ function Comments({ postId, postAuthorId }) {
         }
         return () => { document.body.style.overflow = 'unset'; };
     }, [deleteCommentId]);
+
+    // Fetch Current User Avatar for Input
+    useEffect(() => {
+        if (userData) {
+            appwriteService.getUserProfile(userData.$id).then((profile) => {
+                if (profile?.ProfileImageFileId) {
+                    setCurrentUserAvatar(appwriteService.getAvatarPreview(profile.ProfileImageFileId));
+                }
+            }).catch(() => {});
+        }
+    }, [userData]);
 
     // Fetch comments from API
     const fetchComments = useCallback(async (isSilent = false) => {
@@ -253,6 +271,20 @@ function Comments({ postId, postAuthorId }) {
     const handleCommentChange = useCallback((e) => setNewComment(e.target.value), []);
     const closeModal = useCallback(() => setDeleteCommentId(null), []);
 
+    const LoadingSkeleton = useMemo(() => (
+        <div className="space-y-4 animate-pulse">
+            {[1, 2].map((i) => (
+                <div key={i} className="flex gap-3">
+                    <div className="w-8 h-8 bg-slate-200 rounded-full shrink-0"></div>
+                    <div className="flex-1 space-y-2">
+                        <div className="h-3 bg-slate-200 rounded w-1/4"></div>
+                        <div className="h-3 bg-slate-200 rounded w-3/4"></div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    ), []);
+
     return (
         <div className="relative w-full">
             
@@ -298,47 +330,60 @@ function Comments({ postId, postAuthorId }) {
                 document.body
             )}
 
-            <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+            <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
                 Discussion 
-                <span className="text-xs font-bold text-indigo-600 bg-white px-2.5 py-1 rounded-full border border-indigo-100 shadow-sm">
+                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
                     {comments.length}
                 </span>
             </h3>
 
             {userData ? (
-                <form onSubmit={handleSubmit} className="mb-10 relative group">
-                    <textarea
-                        className="w-full p-4 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none resize-none text-slate-700 text-sm shadow-sm placeholder:text-slate-400"
-                        rows="3"
-                        placeholder="What are your thoughts?"
-                        value={newComment}
-                        onChange={handleCommentChange}
-                        disabled={submitting}
-                    />
-                    <div className="absolute bottom-3 right-3 opacity-100 transition-opacity">
-                        <button 
-                            type="submit" 
-                            disabled={submitting || !newComment.trim()} 
-                            className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-md shadow-indigo-200 active:scale-95"
-                        >
-                            {submitting ? 'Posting...' : 'Post'}
-                        </button>
+                <form onSubmit={handleSubmit} className="mb-8 relative group">
+                    <div className="flex gap-3">
+                        <div className="shrink-0">
+                            {currentUserAvatar ? (
+                                <img 
+                                    src={currentUserAvatar} 
+                                    alt={userData.name} 
+                                    className="w-8 h-8 rounded-full object-cover border border-indigo-200"
+                                />
+                            ) : (
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs border border-indigo-200">
+                                    {userData.name.charAt(0).toUpperCase()}
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex-1">
+                            <textarea
+                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none resize-none text-slate-700 text-sm placeholder:text-slate-400"
+                                rows="2"
+                                placeholder="What are your thoughts?"
+                                value={newComment}
+                                onChange={handleCommentChange}
+                                disabled={submitting}
+                            />
+                            <div className="flex justify-end mt-2">
+                                <button 
+                                    type="submit" 
+                                    disabled={submitting || !newComment.trim()} 
+                                    className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-sm active:scale-95"
+                                >
+                                    {submitting ? 'Posting...' : 'Post'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </form>
             ) : (
-                <div className="gpu-accelerate bg-white rounded-2xl p-8 text-center mb-10 border border-slate-200 border-dashed">
+                <div className="bg-slate-50 rounded-xl p-6 text-center mb-8 border border-slate-100">
                     <p className="text-slate-500 text-sm">
                         <Link to="/login" className="interactive text-indigo-600 font-bold hover:underline">Log In</Link> to join the conversation.
                     </p>
                 </div>
             )}
 
-            <div className="space-y-3 divide-y divide-slate-200/60">
-                {loading ? (
-                    <div className="flex justify-center py-8">
-                        <div className="w-8 h-8 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
-                    </div>
-                ) : comments.length === 0 ? (
+            <div className="space-y-4">
+                {loading ? LoadingSkeleton : comments.length === 0 ? (
                     <div className="text-center py-6 text-slate-400 text-sm">Be the first to share your thoughts.</div>
                 ) : (
                     comments.map((comment) => (

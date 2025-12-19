@@ -4,20 +4,32 @@ import { createPortal } from 'react-dom';
 import appwriteService from '../appwrite/config';
 import { compressImage } from '../utils/compressImage';
 import AvatarCropper from './ImageCropper';
+import { parseErrorMessage } from '../utils/errorUtils'; 
 
-function ProfilePictureManager({ onProfileUpdate }) {
+// 🚨 ACCEPT initialFileId AS PROP
+function ProfilePictureManager({ onProfileUpdate, initialFileId }) {
     const userData = useSelector((state) => state.auth.userData);
-    const [fileId, setFileId] = useState(null);
+    
+    // 🚨 USE PROP IF AVAILABLE, otherwise null
+    const [fileId, setFileId] = useState(initialFileId || null);
+    
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [selectedImageForCrop, setSelectedImageForCrop] = useState(null);
 
-    // Fetch profile image ID on mount
+    // 🚨 SYNC STATE: If parent passes new ID (after update), update local state
     useEffect(() => {
-        if (userData) {
+        if (initialFileId !== undefined) {
+            setFileId(initialFileId);
+        }
+    }, [initialFileId]);
+
+    // 🚨 SMART FETCH: Only fetch if initialFileId was NOT provided (undefined)
+    useEffect(() => {
+        if (userData && initialFileId === undefined) {
             appwriteService.getProfileImageFileId(userData.$id).then(setFileId);
         }
-    }, [userData]);
+    }, [userData, initialFileId]);
 
     // Lock scroll when modal is open
     useEffect(() => {
@@ -40,11 +52,19 @@ function ProfilePictureManager({ onProfileUpdate }) {
     const onFileSelect = (e) => {
         if (e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
+
+            if (file.size > 10 * 1024 * 1024) {
+                alert("Image is too large. Please use an image under 5MB.");
+                e.target.value = null; 
+                return;
+            }
+
             const reader = new FileReader();
             reader.addEventListener('load', () => {
                 setSelectedImageForCrop(reader.result);
             });
             reader.readAsDataURL(file);
+            e.target.value = null; 
         }
     };
 
@@ -70,7 +90,7 @@ function ProfilePictureManager({ onProfileUpdate }) {
             }
         } catch (error) {
             console.error("Error updating avatar:", error);
-            alert("Failed to update profile picture.");
+            alert(parseErrorMessage(error));
         } finally {
             setUploadingAvatar(false);
         }
@@ -88,6 +108,7 @@ function ProfilePictureManager({ onProfileUpdate }) {
             if (onProfileUpdate) onProfileUpdate();
         } catch (error) {
             console.error("Error removing avatar:", error);
+            alert(parseErrorMessage(error));
         } finally {
             setUploadingAvatar(false);
         }

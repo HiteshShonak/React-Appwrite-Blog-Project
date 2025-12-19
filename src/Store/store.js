@@ -4,6 +4,7 @@ import postSlice from './postSlice';
 import dashboardSlice from './dashboardSlice';
 import homeSlice from './homeSlice';
 import usersSlice from './usersSlice';
+import ratingSlice from './ratingSlice';
 
 
 const store = configureStore({
@@ -13,6 +14,7 @@ const store = configureStore({
     dashboard: dashboardSlice,
     home: homeSlice,
     users: usersSlice,
+    ratings: ratingSlice,
   },
 });
 
