@@ -43,10 +43,7 @@ const FaqItem = ({ question, answer, index }) => {
 };
 
 function FAQ() {
-    useEffect(() => {
-        window.scrollTo(0, 0);
-    }, []);
-
+    
     // FAQ data grouped by category
     const faqData = [
         {

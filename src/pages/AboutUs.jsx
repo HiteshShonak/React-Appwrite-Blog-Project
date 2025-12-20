@@ -4,9 +4,6 @@ import Logo from '../assets/Logo.webp';
 import { useEffect } from 'react';
 
 function AboutUs() {
-    useEffect(() => {
-        window.scrollTo(0, 0);
-    }, []);
 
     return (
         <div className='w-full min-h-screen bg-slate-50 py-12 md:py-20 page-anim px-2 sm:px-4'>

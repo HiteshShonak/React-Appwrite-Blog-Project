@@ -16,9 +16,6 @@ function Contact() {
         publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY
     }), []);
 
-    useEffect(() => {
-        window.scrollTo(0, 0);
-    }, []);
 
     // ✅ Memoized submit handler
     const submit = useCallback(async (data) => {

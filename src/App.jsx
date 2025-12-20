@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { Outlet } from 'react-router-dom'
+import { Outlet, ScrollRestoration } from 'react-router-dom'
 import { Header, Footer } from './Components/index.js'
 import authService from './appwrite/auth.js'
 import { login, logout } from './Store/authSlice.js'
@@ -44,6 +44,7 @@ function App() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      <ScrollRestoration />
       <Header />
       <main 
         id="main-content"
