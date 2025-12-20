@@ -1,38 +1,38 @@
 # =========================================================
 # Robots.txt for Blog Ideas & Stories
-# Optimized for React/Vite SPA on Vercel
+# Updated: Public Access Enabled
 # =========================================================
 
 User-agent: *
 Allow: /
 
-# --- 1. Block Auth & Gatekeeping Pages ---
-# Bots cannot log in. Crawling these wastes budget and flags errors.
+# --- 1. Block Auth & Private User Areas ---
+# Bots don't have accounts. Crawling these is useless.
 Disallow: /login
 Disallow: /signup
 Disallow: /dashboard
 
-# --- 2. Block Protected User Routes ---
-# Your router shows these require authentication={true}.
-# If a bot visits these, it gets redirected, which hurts SEO scores.
-Disallow: /all-posts
+# --- 2. Block Write/Edit Routes ---
+# These pages require a session. Bots will hit a redirect or 401 error.
 Disallow: /add-post
 Disallow: /edit-post/
 
-# --- 3. Block Redirects ---
-# Prevents bots from hitting the old /home link and getting a 301.
-Disallow: /home
+# --- 3. IMPORTANT: Public Content ---
+# We have REMOVED '/all-posts' from the block list.
+# Google is now allowed to crawl:
+# - / (Home)
+# - /all-posts (The library)
+# - /post/:slug (The articles)
+# - /author/:username (The writers)
 
-# --- 4. Explicitly Allow Static Assets ---
-# Helps Google render your page layout correctly.
+# --- 4. Technical Assets ---
+# Helps Google render your modern React layout correctly.
 Allow: /*.css
 Allow: /*.js
 Allow: /*.png
 Allow: /*.jpg
-Allow: /*.jpeg
-Allow: /*.svg
 Allow: /*.webp
+Allow: /*.svg
 
 # --- 5. Sitemap ---
-# The map to your public content.
 Sitemap: https://blogideasandstories.vercel.app/sitemap.xml
