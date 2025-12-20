@@ -1,5 +1,5 @@
 ﻿import React, { useMemo } from 'react';
-import DarkLogo from '../../assets/DarkLogo.png';
+import DarkLogo from '../../assets/DarkLogo.webp';
 import { Link } from 'react-router-dom';
 
 

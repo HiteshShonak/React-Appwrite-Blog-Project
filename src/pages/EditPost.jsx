@@ -23,14 +23,14 @@ function EditPost() {
         }
     }, [slug, navigate]);
 
-    // 🚨 DITTO SAME LOADER AS POSTFORM (Immersive Transition)
+    
     if (!post) {
         return createPortal(
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/80 backdrop-blur-md transition-all duration-300">
+            <div className="fixed inset-0 z-9999 flex items-center justify-center bg-slate-900/80 backdrop-blur-md transition-all duration-300">
                 <div className="relative flex flex-col items-center">
                     <div className="relative flex h-24 w-24 mb-8">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-20"></span>
-                        <span className="relative inline-flex rounded-full h-24 w-24 bg-gradient-to-tr from-indigo-600 to-indigo-500 shadow-2xl shadow-indigo-500/40 items-center justify-center border border-indigo-400/20">
+                        <span className="relative inline-flex rounded-full h-24 w-24 bg-linear-to-tr from-indigo-600 to-indigo-500 shadow-2xl shadow-indigo-500/40 items-center justify-center border border-indigo-400/20">
                             {/* Bouncing Pencil Icon (Matches PostForm) */}
                             <svg className="w-10 h-10 text-white animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />

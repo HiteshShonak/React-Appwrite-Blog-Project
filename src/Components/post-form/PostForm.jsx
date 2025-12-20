@@ -11,6 +11,7 @@ import { addPost, updatePost } from '../../Store/postSlice';
 import { addUserPost, updateUserPost } from '../../Store/dashboardSlice';
 import { updateTrendingPost } from '../../Store/homeSlice';
 import ImageCropper from '../ImageCropper.jsx';
+import { EditorLoader } from '../Skeletons.jsx';
 
 function PostForm({ post }) {
     const { register, handleSubmit, watch, setValue, control, getValues, reset } = useForm({
@@ -250,41 +251,13 @@ function PostForm({ post }) {
                     aspect={16 / 9}
                     cropShape="rect"
                     title="Crop Blog Header"
-                    className="!max-w-2xl"
+                    className="max-w-2xl!"
                 />
             )}
 
             {/* 🚨 MODERN SAAS LOADER */}
             {isLoading && createPortal(
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/80 backdrop-blur-md transition-all duration-300">
-                    <div className="relative flex flex-col items-center">
-                        <div className="relative flex h-24 w-24 mb-8">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-20"></span>
-                            <span className="relative inline-flex rounded-full h-24 w-24 bg-gradient-to-tr from-indigo-600 to-indigo-500 shadow-2xl shadow-indigo-500/40 items-center justify-center border border-indigo-400/20">
-                                {isInitializing ? (
-                                    // 🚨 BOUNCING PENCIL ICON (For "Loading Editor")
-                                    <svg className="w-10 h-10 text-white animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                    </svg>
-                                ) : (
-                                    // 🚨 BOUNCING UPLOAD ICON (For "Publishing")
-                                    <svg className="w-10 h-10 text-white animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                    </svg>
-                                )}
-                            </span>
-                        </div>
-                        
-                        <div className="text-center space-y-2">
-                            <h3 className="text-2xl font-black text-white tracking-widest uppercase animate-pulse">
-                                {isInitializing ? 'Initializing Editor' : (isEditMode ? 'Updating Post' : 'Publishing')}
-                            </h3>
-                            <p className="text-indigo-200/80 text-sm font-medium tracking-wide">
-                                {isInitializing ? 'Preparing your workspace...' : 'Just a moment while we save your work...'}
-                            </p>
-                        </div>
-                    </div>
-                </div>,
+                EditorLoader(),
                 document.body
             )}
 

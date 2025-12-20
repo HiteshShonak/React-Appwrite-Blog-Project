@@ -8,6 +8,7 @@ import { Query } from 'appwrite';
 import { Link } from 'react-router-dom';
 import ProfilePictureManager from '../Components/ProfilePictureManager';
 import BioEditModal from '../Components/BioEditModal';
+import { DashboardAuthSkeleton } from '../Components/Skeletons.jsx';
 
 
 function Dashboard() {
@@ -211,85 +212,8 @@ function Dashboard() {
 
     // SKELETON LOADER
     if (loading) {
-        return (
-            <div className='w-full min-h-screen bg-slate-50 py-6 sm:py-8 px-2 sm:px-4'>
-                <Container>
-                    {/* Identity Section Skeleton */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 mb-6 sm:mb-8">
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4">
-                            <div className="flex items-center gap-3 sm:gap-5 w-full md:w-auto animate-pulse">
-                                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-slate-200 shrink-0"></div>
-                                <div className="space-y-2 flex-1">
-                                    <div className="h-5 sm:h-6 w-32 sm:w-40 bg-slate-200 rounded"></div>
-                                    <div className="h-3 sm:h-4 w-48 sm:w-56 bg-slate-200 rounded"></div>
-                                </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-2 sm:gap-3 w-full md:w-auto justify-end animate-pulse">
-                                <div className="h-8 sm:h-10 w-20 sm:w-24 bg-slate-200 rounded-lg"></div>
-                                <div className="hidden md:block h-6 sm:h-8 w-px bg-slate-200"></div>
-                                <div className="h-8 sm:h-10 w-16 sm:w-20 bg-slate-200 rounded-lg"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Action Bar Skeleton */}
-                    <div className="flex items-end justify-between mb-4 sm:mb-6 animate-pulse">
-                        <div className="h-7 sm:h-8 w-24 sm:w-28 bg-slate-200 rounded"></div>
-                        <div className="h-9 sm:h-11 w-32 sm:w-40 bg-slate-200 rounded-xl"></div>
-                    </div>
-
-                    {/* Stats Grid Skeleton */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-8 sm:mb-12">
-                        {[
-                            { span: "" },
-                            { span: "" },
-                            { span: "col-span-2 md:col-span-1" }
-                        ].map((stat, index) => (
-                            <div 
-                                key={index} 
-                                className={`bg-white p-3 sm:p-4 md:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-100 ${stat.span}`}
-                            >
-                                <div className="flex items-center gap-2 sm:gap-3 md:gap-4 animate-pulse">
-                                    <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 bg-slate-200 rounded-lg sm:rounded-xl shrink-0"></div>
-                                    <div className="space-y-2 flex-1">
-                                        <div className="h-3 sm:h-4 w-16 sm:w-20 bg-slate-200 rounded"></div>
-                                        <div className="h-6 sm:h-7 md:h-8 w-10 sm:w-12 bg-slate-200 rounded"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Section Header Skeleton */}
-                    <div className="mb-3 sm:mb-4 animate-pulse">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-slate-200"></div>
-                            <div className="h-5 sm:h-6 w-36 sm:w-44 bg-slate-200 rounded"></div>
-                        </div>
-                    </div>
-
-                    {/* Post Cards Grid Skeleton */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-                        {[...Array(8)].map((_, index) => (
-                            <div key={index} className="bg-white rounded-xl overflow-hidden border border-slate-100 shadow-sm">
-                                <div className="aspect-video w-full bg-slate-200 animate-pulse"></div>
-                                <div className="p-3 sm:p-4 space-y-3">
-                                    <div className="space-y-2 animate-pulse">
-                                        <div className="h-4 bg-slate-200 rounded w-full"></div>
-                                        <div className="h-4 bg-slate-200 rounded w-4/5"></div>
-                                    </div>
-                                    <div className="flex items-center gap-2 pt-1 animate-pulse">
-                                        <div className="h-3 bg-slate-200 rounded w-16"></div>
-                                        <div className="h-3 bg-slate-200 rounded w-20"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </Container>
-            </div>
-        );
+        
+        return <DashboardAuthSkeleton />;
     }
 
     // AUTHENTICATED DASHBOARD

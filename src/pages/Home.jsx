@@ -6,6 +6,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { setTrendingPosts } from '../Store/homeSlice';
 import { setMultipleRatings } from '../Store/ratingSlice';
 import { Link } from 'react-router-dom';
+import { HomeSkeleton } from '../Components/Skeletons.jsx';
 
 // Memoized trending card component
 const TrendingCard = memo(({ post, onClick }) => {
@@ -47,7 +48,6 @@ const TrendingCard = memo(({ post, onClick }) => {
 TrendingCard.displayName = 'TrendingCard';
 
 function Home() {
-    const location = useLocation();
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const authStatus = useSelector((state) => state.auth.status);
@@ -60,12 +60,6 @@ function Home() {
         if (trending.length === 0) return [];
         return Array(6).fill(trending).flat();
     }, [trending]);
-
-    useEffect(() => {
-        if (location.pathname === '/') {
-            navigate('/home', { replace: true });
-        }
-    }, [location.pathname, navigate]);
 
     // Fetch trending posts if not cached
     useEffect(() => {
@@ -139,46 +133,7 @@ function Home() {
     }, [authStatus, navigate]);
 
     if (loading) {
-        return (
-            <div className="gpu-accelerate fixed inset-0 bg-white z-50 flex flex-col items-center justify-center overflow-hidden px-2 sm:px-4">
-                <div className="absolute inset-0 z-0 opacity-[0.4]" 
-                     style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '32px 32px' }}>
-                </div>
-
-                <div className="relative z-10 flex flex-col items-center">
-                    <div className="mb-8 relative">
-                        <div className="absolute inset-0 bg-blue-100 rounded-full animate-ping opacity-75"></div>
-                        <div className="relative bg-white p-6 rounded-full shadow-xl border border-blue-50">
-                            <svg className="w-12 h-12 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                            </svg>
-                        </div>
-                    </div>
-
-                    <h1 className="text-center animate-fade-in-up">
-                        <span className="block text-2xl md:text-3xl font-bold text-slate-500 mb-0 tracking-wide uppercase">
-                            Discover
-                        </span>
-                        <span className="block mt-0 text-5xl md:text-7xl font-black text-slate-900 tracking-tighter leading-tight">
-                            Blog Ideas &{' '}
-                            <span className="relative inline-block">
-                                <span className="relative z-10 bg-linear-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-                                    Stories
-                                </span>
-                                <span className="absolute bottom-2 left-0 w-full h-3 bg-indigo-100/50 z-0 rounded-full transform -rotate-2"></span>
-                            </span>
-                        </span>
-                    </h1>
-                    <p className="text-slate-400 mt-2 text-sm font-medium tracking-wide uppercase animate-pulse">
-                        Curating your experience...
-                    </p>
-
-                    <div className="w-48 h-1.5 bg-slate-100 rounded-full mt-8 overflow-hidden relative">
-                        <div className="absolute top-0 left-0 h-full w-full bg-blue-600 rounded-full animate-progress-indeterminate origin-left"></div>
-                    </div>
-                </div>
-            </div>
-        );
+        return <HomeSkeleton />;
     }
 
     return (
@@ -208,8 +163,8 @@ function Home() {
                             </span>
                         </div>
 
-                        <div className="absolute top-0 left-0 w-32 md:w-64 2xl:w-96 h-full bg-linear-to-r from-slate-50 via-slate-50/90 to-transparent z-20 pointer-events-none"></div>
-                        <div className="absolute top-0 right-0 w-32 md:w-64 2xl:w-96 h-full bg-linear-to-l from-slate-50 via-slate-50/90 to-transparent z-20 pointer-events-none"></div>
+                        <div className="absolute top-0 left-0 w-16 md:w-64 2xl:w-96 h-full bg-linear-to-r from-slate-50 via-slate-50/90 to-transparent z-20 pointer-events-none"></div>
+                        <div className="absolute top-0 right-0 w-16 md:w-64 2xl:w-96 h-full bg-linear-to-l from-slate-50 via-slate-50/90 to-transparent z-20 pointer-events-none"></div>
 
                         <div className="flex w-max animate-scroll group-hover:paused items-center">
                             {carouselItems.length > 0 ? (

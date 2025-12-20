@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'; // ✅ ADD useCallback
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import appwriteService from '../appwrite/config.js';
 import { PostCard, Container } from '../Components';
 import { Query } from 'appwrite';
 import { useSelector, useDispatch } from 'react-redux';
 import { setPosts } from '../Store/postSlice';
 import { setMultipleRatings } from '../Store/ratingSlice';
+import { AllPostsSkeleton } from '../Components/Skeletons.jsx';
 
 
 function AllPosts() {
@@ -62,38 +63,11 @@ function AllPosts() {
         } else {
             setLoading(false);
         }
-    }, [dispatch, prefetchRatings]); // ✅ REMOVED 'posts' to prevent infinite loop
+    }, [dispatch, prefetchRatings]);
 
 
     if (loading) {
-        return (
-            <div className='py-6 sm:py-8 bg-slate-50 min-h-screen animate-pulse px-2 sm:px-4'>
-                <Container>
-                    <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 border-b border-slate-200 pb-3 sm:pb-4">
-                        <div className="h-8 w-48 bg-slate-200 rounded-lg"></div>
-                        <div className="h-6 w-24 bg-slate-200 rounded-full mt-2 sm:mt-0"></div>
-                    </div>
-
-                    <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6'>
-                        {[...Array(10)].map((_, index) => (
-                            <div key={index} className="bg-white rounded-xl overflow-hidden h-full border border-slate-100 shadow-sm">
-                                <div className="aspect-video w-full bg-slate-200"></div>
-                                <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
-                                    <div className="space-y-2">
-                                        <div className="h-4 bg-slate-200 rounded w-full"></div>
-                                        <div className="h-4 bg-slate-200 rounded w-4/5"></div>
-                                    </div>
-                                    <div className="flex items-center gap-2 pt-1">
-                                        <div className="h-3 bg-slate-200 rounded w-16"></div>
-                                        <div className="h-3 bg-slate-200 rounded w-20"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </Container>
-            </div>
-        );
+        return <AllPostsSkeleton />;
     }
 
     return (

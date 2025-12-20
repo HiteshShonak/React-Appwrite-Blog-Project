@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import appwriteService from '../appwrite/config';
 import { Container, PostCard } from '../Components';
 import { Query } from 'appwrite';
+import { AuthorProfileSkeleton } from '../Components/Skeletons';
 
 
 function AuthorProfile() {
@@ -70,60 +71,7 @@ function AuthorProfile() {
 
     // Skeleton loading screen
     if (loading) {
-        return (
-            <div className='w-full min-h-screen bg-slate-50 py-8 sm:py-12 px-2 sm:px-4 animate-pulse'>
-                <Container>
-                    {/* Profile card skeleton */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 mb-8 sm:mb-12">
-                        <div className="flex flex-col md:flex-row items-center md:items-start gap-4 sm:gap-6">
-                            {/* Avatar skeleton */}
-                            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-slate-200 shrink-0"></div>
-                            
-                            {/* Name & stats skeleton */}
-                            <div className="flex-1 pt-2 w-full">
-                                <div className="h-8 sm:h-9 bg-slate-200 rounded-lg w-48 mx-auto md:mx-0 mb-2"></div>
-                                <div className="h-6 bg-slate-200 rounded w-32 mx-auto md:mx-0 mb-3 sm:mb-4"></div>
-                                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
-                                    <div className="h-5 bg-slate-200 rounded w-24"></div>
-                                    <div className="h-5 bg-slate-200 rounded w-32"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <hr className="my-6 sm:my-8 border-slate-100" />
-
-                        {/* Bio skeleton */}
-                        <div>
-                            <div className="h-6 bg-slate-200 rounded w-32 mb-3 mx-auto md:mx-0"></div>
-                            <div className="space-y-2 max-w-3xl">
-                                <div className="h-4 bg-slate-200 rounded w-full"></div>
-                                <div className="h-4 bg-slate-200 rounded w-5/6"></div>
-                                <div className="h-4 bg-slate-200 rounded w-4/6"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Posts grid skeleton */}
-                    <div className="flex items-center gap-3 mb-6 sm:mb-8 px-2">
-                        <div className="h-6 sm:h-8 w-1.5 bg-slate-200 rounded-full"></div>
-                        <div className="h-7 sm:h-8 bg-slate-200 rounded w-40"></div>
-                    </div>
-                    
-                    <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6'>
-                        {[...Array(4)].map((_, index) => (
-                            <div key={index} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                                <div className="h-40 sm:h-48 bg-slate-200"></div>
-                                <div className="p-4 space-y-3">
-                                    <div className="h-5 bg-slate-200 rounded w-3/4"></div>
-                                    <div className="h-4 bg-slate-200 rounded w-full"></div>
-                                    <div className="h-4 bg-slate-200 rounded w-5/6"></div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </Container>
-            </div>
-        );
+        return <AuthorProfileSkeleton />;
     }
 
     // Profile not found

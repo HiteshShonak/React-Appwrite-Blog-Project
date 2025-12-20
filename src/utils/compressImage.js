@@ -2,19 +2,18 @@ import imageCompression from 'browser-image-compression';
 
 const COMPRESSION_CONFIG = {
     avatar: {
-        maxSizeMB: 0.05,
-        maxWidthOrHeight: 500,
+        maxSizeMB: 0.01,        // Goal: ~10KB
+        maxWidthOrHeight: 150,  // Good for profile (92px) + buffer
         useWebWorker: true,
         fileType: "image/webp",
-        initialQuality: 0.8
+        initialQuality: 0.80    
     },
     post: {
-        maxSizeMB: 1.0,
-        maxWidthOrHeight: 1920,
+        maxSizeMB: 0.15,        // Goal: ~150KB (Slightly higher budget for the extra width)
+        maxWidthOrHeight: 900,  // 🚨 EXACT MATCH for your 895px Hero container
         useWebWorker: true,
         fileType: "image/webp",
-        initialQuality: 0.9,
-        alwaysKeepResolution: true
+        initialQuality: 0.80,   // 80% is the sweet spot for WebP
     }
 };
 
@@ -25,31 +24,31 @@ const COMPRESSION_CONFIG = {
  * @param {string} authorName - Author Name (only needed for 'post' type)
  */
 export const compressImage = async (file, type = 'post', entityName = 'User', authorName = '') => {
+    // Default to 'post' config if type is invalid
     const options = COMPRESSION_CONFIG[type] || COMPRESSION_CONFIG.post;
 
     try {
         const compressedBlob = await imageCompression(file, options);
 
-        // 1. Generate clean slugs (remove special characters, replace spaces with dashes)
-        const cleanEntity = entityName.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-        const cleanAuthor = authorName.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        // 1. Clean filename generation
+        const cleanEntity = (entityName || 'unknown').toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        const cleanAuthor = (authorName || 'user').toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
         
-        // 2. Create Unique Timestamp (Short version)
+        // 2. Short timestamp
         const timestamp = Math.floor(Date.now() / 1000);
 
-        // 3. Conditional Renaming
+        // 3. Construct filename
         let finalFileName = "";
         if (type === 'avatar') {
-            // Result: avatar-john-doe-1712345678.webp
             finalFileName = `avatar-${cleanEntity}-${timestamp}.webp`;
         } else {
-            // Result: my-cool-blog-john-doe-1712345678.webp
-            finalFileName = `${cleanEntity}-${cleanAuthor}-${timestamp}.webp`;
+            const shortEntity = cleanEntity.substring(0, 30); 
+            finalFileName = `${shortEntity}-${cleanAuthor}-${timestamp}.webp`;
         }
 
         const compressedFile = new File([compressedBlob], finalFileName, { 
             type: "image/webp",
-            lastModified: new Date().getTime()
+            lastModified: Date.now()
         });
 
         return compressedFile;

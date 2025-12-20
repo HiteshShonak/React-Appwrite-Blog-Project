@@ -1,5 +1,5 @@
 import Container from "../Container/Container.jsx";
-import logo from '../../assets/Logo.png';
+import logo from '../../assets/Logo.webp';
 import { useSelector } from 'react-redux';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 
@@ -10,7 +10,7 @@ function Header() {
 
 
   const navItems = [
-    { name: 'Home', slug: '/home', active: true },
+    { name: 'Home', slug: '/', active: true },
     { name: 'All Posts', slug: '/all-posts', active: authStatus },
     { name: 'Dashboard', slug: '/dashboard', active: true },
   ];
@@ -21,7 +21,7 @@ function Header() {
       <Container>
         <div className='flex items-center justify-between w-full' style={{gap: 'var(--spacing-md)'}}>
           {/* Logo */}
-          <Link to="/" className="flex-shrink-0">
+          <Link to="/" className="shrink-0">
             <img 
               src={logo} 
               alt="Logo" 
@@ -61,7 +61,7 @@ function Header() {
 
 
           {/* Tagline - hidden on mobile */}
-          <div className='text-center max-sm:hidden flex-shrink-0'>
+          <div className='text-center max-sm:hidden shrink-0'>
             <h1 
               className='font-black tracking-tight'
               style={{ fontSize: 'clamp(1.25rem, 2.5vw, 1.875rem)' }}
