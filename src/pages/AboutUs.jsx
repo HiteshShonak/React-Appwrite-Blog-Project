@@ -1,148 +1,121 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { useForm } from 'react-hook-form';
-import { Container, Button, Input } from '../Components';
-import emailjs from '@emailjs/browser';
+import { Container, Button } from '../Components';
+import { Link } from 'react-router-dom';
+import Logo from '../assets/Logo.webp';
+import { useEffect } from 'react';
 
-
-function Contact() {
-    const { register, handleSubmit, reset, formState: { errors } } = useForm();
-    const [notification, setNotification] = useState({ message: "", type: "" });
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    // ✅ Memoize EmailJS credentials (read once)
-    const emailConfig = useMemo(() => ({
-        serviceId: import.meta.env.VITE_EMAILJS_SERVICE_ID,
-        templateId: import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
-        publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY
-    }), []);
-
+function AboutUs() {
     useEffect(() => {
         window.scrollTo(0, 0);
     }, []);
 
-    // ✅ Memoized submit handler
-    const submit = useCallback(async (data) => {
-        setNotification({ message: "", type: "" });
-        setIsSubmitting(true);
-
-        const templateParams = {
-            name: data.name,
-            email: data.email,
-            subject: data.subject, 
-            title: data.subject,
-            message: data.message,
-        };
-
-        try {
-            await emailjs.send(
-                emailConfig.serviceId,
-                emailConfig.templateId,
-                templateParams,
-                emailConfig.publicKey
-            );
-            
-            setNotification({ message: "Message sent successfully!", type: "success" });
-            reset();
-        } catch (error) {
-            console.error("EmailJS Error:", error);
-            setNotification({ message: "Failed to send. Check your connection.", type: "error" });
-        } finally {
-            setIsSubmitting(false);
-        }
-    }, [emailConfig, reset]);
-
-    // Auto-hide notification after 3 seconds
-    useEffect(() => {
-        if (notification.message) {
-            const timer = setTimeout(() => setNotification({ message: "", type: "" }), 3000);
-            return () => clearTimeout(timer);
-        }
-    }, [notification]);
-
     return (
-        <div className='w-full min-h-screen bg-slate-50 py-12 relative page-anim px-2 sm:px-4'>
-            
-            {/* Notification toast */}
-            {notification.message && (
-                <div className='gpu-accelerate fixed top-24 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-sm px-4 pointer-events-none'>
-                    <div className={`gpu-accelerate
-                        px-6 py-3 rounded-lg shadow-xl animate-bounce flex items-center justify-center gap-2
-                        ${notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}
-                    `}>
-                        <span className='font-bold text-sm'>{notification.message}</span>
-                    </div>
-                </div>
-            )}
-
+        <div className='w-full min-h-screen bg-slate-50 py-12 md:py-20 page-anim px-2 sm:px-4'>
             <Container>
-                <div className="max-w-5xl mx-auto flex flex-col md:flex-row gap-10 items-start">
-                    
-                    {/* Contact information */}
-                    <div className="w-full md:w-1/3 pt-4 space-y-6">
-                        <div>
-                            <h2 className="text-3xl font-extrabold text-slate-900">Get in touch</h2>
-                            <p className="text-slate-500 mt-2">
-                                Have a question? Drop us a message and we'll get back to you shortly.
-                            </p>
+                <div className="max-w-4xl mx-auto">
+                   
+                    {/* Hero section */}
+                    <div className="text-center mb-16">
+                        <div className="inline-block p-3 bg-blue-50 text-blue-600 rounded-2xl mb-6">
+                            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                            </svg>
                         </div>
-                        <div className="flex items-start gap-4">
-                            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                        <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-6">
+                            Building the home for <br className="hidden md:block" />
+                            <span className="text-blue-600">curious minds.</span>
+                        </h1>
+                        <p className="text-lg md:text-xl text-slate-600 leading-relaxed max-w-2xl mx-auto">
+                            Blog Ideas & Stories is a modern blogging platform built with React, Appwrite, and Redux. Share your ideas, connect with readers, and explore stories from our growing community.
+                        </p>
+                    </div>
+
+                    {/* Mission card */}
+                    <div className="gpu-accelerate bg-white rounded-3xl shadow-sm border border-slate-100 p-8 md:p-12 mb-12">
+                        <div className="flex flex-col md:flex-row items-center gap-10">
+                            <div className="flex-1">
+                                <h2 className="text-2xl font-bold text-slate-900 mb-4">Our Mission</h2>
+                                <p className="text-slate-600 leading-relaxed mb-6">
+                                    Everyone has a story to tell. This platform provides a clean, distraction-free environment where your words take center stage. Whether you're an industry expert or just starting your writing journey, this is your canvas.
+                                </p>
+                                <p className="text-slate-600 leading-relaxed">
+                                    Built with performance in mind, featuring 3-layer caching, optimistic updates, and a seamless reading experience. We strip away the clutter so you can focus on what matters most: <b>creating content that connects.</b>
+                                </p>
+                            </div>
+                            <div className="flex-1 w-full">
+                                <img
+                                    src={Logo}
+                                    alt="Blog Ideas & Stories logo"
+                                    className="gpu-accelerate w-full h-64 object-contain rounded-2xl shadow-md transform rotate-2 hover:rotate-0 transition-all duration-500"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Values grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+                        <div className="gpu-accelerate bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-4">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                 </svg>
                             </div>
-                            <div>
-                                <h3 className="font-bold text-slate-900">Email Us</h3>
-                                <a className="text-slate-600 text-sm" href="mailto:blogideasstories@gmail.com">blogideasstories@gmail.com</a>
+                            <h3 className="text-lg font-bold text-slate-900 mb-2">Built for Speed</h3>
+                            <p className="text-sm text-slate-500 leading-relaxed">
+                                Lightning-fast experience powered by React and Appwrite with intelligent caching. 90% fewer API calls means instant content delivery.
+                            </p>
+                        </div>
+
+                        <div className="gpu-accelerate bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-4">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
                             </div>
+                            <h3 className="text-lg font-bold text-slate-900 mb-2">Community First</h3>
+                            <p className="text-sm text-slate-500 leading-relaxed">
+                                Connect with other writers through comments, ratings, and author profiles. Rate posts, share feedback, and grow your audience.
+                            </p>
+                        </div>
+
+                        <div className="gpu-accelerate bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-4">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900 mb-2">Freedom to Create</h3>
+                            <p className="text-sm text-slate-500 leading-relaxed">
+                                Rich text editor with image uploads, drafts auto-save, and optimistic updates. Write about what you love without limits.
+                            </p>
                         </div>
                     </div>
 
-                    {/* Contact form */}
-                    <div className="gpu-accelerate w-full md:w-2/3 bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
-                        <form onSubmit={handleSubmit(submit)} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <Input
-                                    label="Name"
-                                    placeholder="Your Name"
-                                    {...register("name", { required: true })}
-                                />
-                                <Input
-                                    label="Email"
-                                    type="email"
-                                    placeholder="you@example.com"
-                                    {...register("email", { required: true })}
-                                />
+                    {/* CTA section */}
+                    <div className="gpu-accelerate bg-slate-900 rounded-3xl p-8 md:p-12 text-center text-white relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-full opacity-10">
+                            <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                <path d="M0 100 C 20 0 50 0 100 100 Z" fill="white" />
+                            </svg>
+                        </div>
+
+                        <div className="relative z-10">
+                            <h2 className="text-3xl font-bold mb-4">Ready to share your story?</h2>
+                            <p className="text-slate-300 mb-8 max-w-xl mx-auto">
+                                Join our growing community of writers sharing their ideas and stories. It takes less than a minute to get started.
+                            </p>
+                            <div className="flex flex-col sm:flex-row justify-center gap-4">
+                                <Link to="/signup">
+                                    <Button className="bg-white! text-slate-900! hover:bg-slate-100! px-8! py-3! text-lg! font-bold shadow-lg">
+                                        Get Started
+                                    </Button>
+                                </Link>
+                                <Link to="/all-posts">
+                                    <Button className="bg-transparent! border border-slate-600 text-white! hover:bg-slate-800! px-8! py-3! text-lg!">
+                                        Start Reading
+                                    </Button>
+                                </Link>
                             </div>
-
-                            <Input
-                                label="Subject"
-                                placeholder="What is this about?"
-                                {...register("subject", { required: true })}
-                            />
-
-                            <div className='w-full'>
-                                <label className='inline-block mb-1 pl-1 text-sm font-medium text-slate-700'>
-                                    Message
-                                </label>
-                                <textarea
-                                    rows="4"
-                                    placeholder="Type your message here..."
-                                    className="px-4 py-3 rounded-lg bg-slate-50 text-black outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 border border-slate-200 w-full resize-none transition-all duration-200"
-                                    {...register("message", { required: true })}
-                                ></textarea>
-                            </div>
-
-                            <Button 
-                                type="submit" 
-                                disabled={isSubmitting}
-                                className={`w-full py-3 font-bold shadow-md transition-all
-                                    ${isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98]'}
-                                `}
-                            >
-                                {isSubmitting ? "Sending..." : "Send Message"}
-                            </Button>
-                        </form>
+                        </div>
                     </div>
 
                 </div>
@@ -151,4 +124,4 @@ function Contact() {
     )
 }
 
-export default Contact
+export default AboutUs;
