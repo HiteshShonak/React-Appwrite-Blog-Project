@@ -1,11 +1,9 @@
-// src/utils/cookieUtils.js
-
 const COOKIE_EXPIRY_DAYS = 1; // 24 hours
 
 export const setViewedCookie = (postId) => {
     const name = `viewed_post_${postId}`;
     const date = new Date();
-    // Set cookie to expire in 24 hours
+    // Set cookie to expire in 1 hours
     date.setTime(date.getTime() + (COOKIE_EXPIRY_DAYS * 1 * 60 * 60 * 1000));
     const expires = "; expires=" + date.toUTCString();
     

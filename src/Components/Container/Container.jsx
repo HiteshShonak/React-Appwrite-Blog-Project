@@ -1,9 +1,11 @@
+import React from 'react';
 
-
-function Container({children}) {
+function Container({ children, className = '' }) {
   return (
-    <div className='w-full px-2'>{children}</div>
-  )
+    <div className={`w-full px-2 ${className}`}>
+      {children}
+    </div>
+  );
 }
 
-export default Container
+export default Container;

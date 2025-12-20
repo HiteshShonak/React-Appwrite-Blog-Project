@@ -1,22 +1,27 @@
-import React, { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 
 export default function Protected({ children, authentication = true }) {
-
     const navigate = useNavigate();
     const authStatus = useSelector((state) => state.auth.status);
 
     useEffect(() => {
-        if (authentication && authStatus !== authentication) {
-            navigate("/login");
-        } else if (!authentication && authStatus !== authentication) {
-            navigate("/dashboard");
+        // Protected route: Needs login but user is not logged in
+        if (authentication && !authStatus) {
+            navigate("/login", { replace: true });
+            return;
         }
-    }, [authStatus, navigate, authentication]);
+        
+        // Public route: User already logged in, redirect to dashboard
+        if (!authentication && authStatus) {
+            navigate("/dashboard", { replace: true });
+            return;
+        }
+        
+        // Correct access - do nothing
+    }, [authStatus, authentication, navigate]);
 
-    if (authentication && authStatus !== authentication) return null;
-    if (!authentication && authStatus !== authentication) return null;
-
+    // Just render children - Suspense in main.jsx handles loading
     return <>{children}</>;
 }

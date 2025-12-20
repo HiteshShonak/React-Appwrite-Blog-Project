@@ -416,97 +416,96 @@ export class Service {
         }
     }
 
+    
     // Hybrid Trending Logic (Time Window + Scoring + Smart Backfill)
-    async getTrendingPosts() {
-        try {
-            // 1. Define Time Window (Last 10 Days)
-            const date = new Date();
-            date.setDate(date.getDate() - 10);
+    async getTrendingPosts(limit = 6) { // ✅ ADD PARAMETER with default value
+    try {
+        // 1. Define Time Window (Last 10 Days)
+        const date = new Date();
+        date.setDate(date.getDate() - 10);
 
-            // 2. Fetch Recent Trending Candidates
-            let response = await this.databases.listDocuments(
+        // 2. Fetch Recent Trending Candidates (fetch more than needed for scoring)
+        let response = await this.databases.listDocuments(
+            conf.appwriteDatabaseId,
+            conf.appwriteCollectionId,
+            [
+                Query.equal("Status", "active"),
+                Query.greaterThanEqual("$createdAt", date.toISOString()),
+                Query.limit(Math.max(40, limit * 3)) // ✅ Scale fetch based on limit
+            ]
+        );
+
+        let initialPosts = response ? response.documents : [];
+
+        // 3. Score & Sort the Recent Posts
+        let scoredPosts = await Promise.all(initialPosts.map(async (post) => {
+            const views = post.Views || 0;
+            
+            // Fetch Rating
+            let averageRating = 0;
+            try {
+                const ratingData = await this.getPostRatings(post.$id);
+                if (ratingData && ratingData.documents.length > 0) {
+                    const totalStars = ratingData.documents.reduce((acc, curr) => acc + curr.stars, 0);
+                    averageRating = totalStars / ratingData.documents.length;
+                }
+            } catch (e) {
+                averageRating = 0;
+            }
+
+            // Time Decay
+            const publishedDate = new Date(post.$createdAt);
+            const now = new Date();
+            const hoursSincePublished = Math.max(0, (now - publishedDate) / (1000 * 60 * 60));
+
+            // Quality Multiplier
+            let qualityMultiplier = 1;
+            if (averageRating > 0) {
+                qualityMultiplier = 0.5 + (averageRating * 0.4); 
+            }
+
+            const gravity = views / Math.pow(hoursSincePublished + 2, 1.5);
+            const finalScore = gravity * qualityMultiplier;
+
+            return { ...post, trendScore: finalScore };
+        }));
+
+        // Sort Recent Posts by Score
+        scoredPosts.sort((a, b) => b.trendScore - a.trendScore);
+
+        // 4. SMART BACKFILL: Check if we have less than requested limit
+        if (scoredPosts.length < limit) { // ✅ Use dynamic limit
+            const needed = limit - scoredPosts.length;
+            
+            // Fetch "All-Time Best" to fill the gap
+            const existingIds = scoredPosts.map(p => p.$id);
+            
+            const fallbackResponse = await this.databases.listDocuments(
                 conf.appwriteDatabaseId,
                 conf.appwriteCollectionId,
                 [
                     Query.equal("Status", "active"),
-                    Query.greaterThanEqual("$createdAt", date.toISOString()),
-                    Query.limit(40) 
+                    Query.orderDesc("Views"),
+                    Query.limit(needed + 10) // ✅ Fetch slightly more than needed for filtering
                 ]
             );
 
-            let initialPosts = response ? response.documents : [];
-
-            // 3. Score & Sort the Recent Posts
-            let scoredPosts = await Promise.all(initialPosts.map(async (post) => {
-                const views = post.Views || 0;
+            if (fallbackResponse && fallbackResponse.documents) {
+                const fallbackPosts = fallbackResponse.documents.filter(p => !existingIds.includes(p.$id));
                 
-                // Fetch Rating
-                let averageRating = 0;
-                try {
-                    const ratingData = await this.getPostRatings(post.$id);
-                    if (ratingData && ratingData.documents.length > 0) {
-                        const totalStars = ratingData.documents.reduce((acc, curr) => acc + curr.stars, 0);
-                        averageRating = totalStars / ratingData.documents.length;
-                    }
-                } catch (e) {
-                    averageRating = 0;
-                }
-
-                // Time Decay
-                const publishedDate = new Date(post.$createdAt);
-                const now = new Date();
-                const hoursSincePublished = Math.max(0, (now - publishedDate) / (1000 * 60 * 60));
-
-                // Quality Multiplier
-                let qualityMultiplier = 1;
-                if (averageRating > 0) {
-                    qualityMultiplier = 0.5 + (averageRating * 0.4); 
-                }
-
-                const gravity = views / Math.pow(hoursSincePublished + 2, 1.5);
-                const finalScore = gravity * qualityMultiplier;
-
-                return { ...post, trendScore: finalScore };
-            }));
-
-            // Sort Recent Posts by Score
-            scoredPosts.sort((a, b) => b.trendScore - a.trendScore);
-
-            // 4. SMART BACKFILL: Check if we have less than 6 posts
-            if (scoredPosts.length < 6) {
-                const needed = 6 - scoredPosts.length;
-                
-                // Fetch "All-Time Best" to fill the gap
-                // We exclude the ones we already have to avoid duplicates
-                const existingIds = scoredPosts.map(p => p.$id);
-                
-                const fallbackResponse = await this.databases.listDocuments(
-                    conf.appwriteDatabaseId,
-                    conf.appwriteCollectionId,
-                    [
-                        Query.equal("Status", "active"),
-                        Query.orderDesc("Views"), // Most viewed of all time
-                        Query.limit(20) // Fetch enough to find non-duplicates
-                    ]
-                );
-
-                if (fallbackResponse && fallbackResponse.documents) {
-                    const fallbackPosts = fallbackResponse.documents.filter(p => !existingIds.includes(p.$id));
-                    
-                    // Add the best fallback posts to fill the quota
-                    scoredPosts = [...scoredPosts, ...fallbackPosts.slice(0, needed)];
-                }
+                // Add the best fallback posts to fill the quota
+                scoredPosts = [...scoredPosts, ...fallbackPosts.slice(0, needed)];
             }
-
-            // 5. Final Safety Slice (Return exactly top 6)
-            return scoredPosts.slice(0, 6);
-
-        } catch (error) {
-            console.log("Appwrite Service :: getTrendingPosts :: error", error);
-            return [];
         }
+
+        // 5. Final Safety Slice (Return exactly requested limit)
+        return scoredPosts.slice(0, limit); // ✅ Use dynamic limit
+
+    } catch (error) {
+        console.log("Appwrite Service :: getTrendingPosts :: error", error);
+        return [];
     }
-    
+}
 
     // ============================================================
     // 👤 USER PROFILE SERVICES (Logic Reset)

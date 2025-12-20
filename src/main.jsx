@@ -83,11 +83,11 @@ const router = createBrowserRouter([
       {
         path: '/all-posts',
         element: (
-          <AuthLayout authentication={true}>
+          
             <SuspenseLayout fallback={<AllPostsSkeleton />}>
               <AllPosts />
             </SuspenseLayout>
-          </AuthLayout>
+          
         ),
       },
       {
@@ -113,11 +113,11 @@ const router = createBrowserRouter([
       {
         path: '/post/:slug',
         element: (
-          <AuthLayout authentication={true}>
+          
             <SuspenseLayout fallback={<PostSkeleton />}>
               <Post />
             </SuspenseLayout>
-          </AuthLayout>
+          
         ),
       },
       {
@@ -131,9 +131,11 @@ const router = createBrowserRouter([
       {
         path: '/author/:username',
         element: (
+          <AuthLayout authentication={true}>
           <SuspenseLayout fallback={<AuthorProfileSkeleton />}>
             <AuthorProfile />
           </SuspenseLayout>
+          </AuthLayout>
         ),
       },
       {

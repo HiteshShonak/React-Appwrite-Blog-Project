@@ -3,10 +3,13 @@ import appwriteService from '../appwrite/config.js';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 
-
-function PostCard({$id, Title, featuredImage}) {
-    // ✅ ONLY READ FROM REDUX - NO FETCHING!
-    const rating = useSelector((state) => state.ratings?.postRatings?.[$id]) || null;
+function PostCard({ $id, Title, featuredImage }) {
+    // ✅ OPTIMIZED: Memoized selector to prevent unnecessary re-renders
+    // Only re-renders when THIS specific rating changes, not when any rating changes
+    const rating = useSelector(
+        (state) => state.ratings?.postRatings?.[$id] || null,
+        (prev, next) => prev === next // Shallow equality check
+    );
 
     return (
         <Link to={`/post/${$id}`} className="gpu-accelerate group block h-full">
@@ -50,4 +53,12 @@ function PostCard({$id, Title, featuredImage}) {
     );
 }
 
-export default memo(PostCard);
+// ✅ OPTIMIZED: Custom comparison function for memo
+// Only re-renders when props actually change
+export default memo(PostCard, (prevProps, nextProps) => {
+    return (
+        prevProps.$id === nextProps.$id &&
+        prevProps.Title === nextProps.Title &&
+        prevProps.featuredImage === nextProps.featuredImage
+    );
+});

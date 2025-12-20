@@ -31,6 +31,37 @@
   --padding-footer: clamp(240px, 30vw, 340px);
 }
 
+/* ============================================
+   ACCESSIBILITY: Screen Reader Only Utility
+   ============================================ */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.focus\:not-sr-only:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
 body {
   margin: 0;
   padding: 0;
@@ -39,7 +70,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Page load animation - Smoother with better easing */
+/* ============================================
+   PAGE ANIMATIONS
+   ============================================ */
+
+/* Page load animation */
 @keyframes page-enter {
   0% {
     opacity: 0;
@@ -56,7 +91,28 @@ body {
   will-change: transform, opacity;
 }
 
-/* Horizontal scrolling animation - Smoother timing */
+/* Fade in up animation */
+@keyframes fade-in-up {
+  0% { 
+    opacity: 0; 
+    transform: translate3d(0, 15px, 0);
+  }
+  100% { 
+    opacity: 1; 
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* ============================================
+   SCROLLING ANIMATIONS
+   ============================================ */
+
+/* Horizontal scrolling animation */
 @keyframes scroll {
   0% { 
     transform: translate3d(0, 0, 0); 
@@ -76,7 +132,7 @@ body {
   animation-play-state: paused;
 }
 
-/* Indeterminate progress bar - Smoother motion */
+/* Indeterminate progress bar */
 @keyframes progress-indeterminate {
   0% { 
     transform: translate3d(-100%, 0, 0) scaleX(0.3);
@@ -94,24 +150,10 @@ body {
   will-change: transform;
 }
 
-/* Fade in up animation - Smoother easing */
-@keyframes fade-in-up {
-  0% { 
-    opacity: 0; 
-    transform: translate3d(0, 15px, 0);
-  }
-  100% { 
-    opacity: 1; 
-    transform: translate3d(0, 0, 0);
-  }
-}
+/* ============================================
+   USER INTERACTION UTILITIES
+   ============================================ */
 
-.animate-fade-in-up {
-  animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  will-change: transform, opacity;
-}
-
-/* User selection controls */
 .user-select-none {
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -124,7 +166,10 @@ body {
   user-drag: none;
 }
 
-/* Header with enhanced glassmorphism - smoother transitions */
+/* ============================================
+   HEADER GLASSMORPHISM
+   ============================================ */
+
 .header {
   background-color: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(20px);
@@ -134,11 +179,11 @@ body {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ========================================
-   ULTRA-SMOOTH FAQ ANIMATIONS
-   ======================================== */
+/* ============================================
+   FAQ ANIMATIONS
+   ============================================ */
 
-/* FAQ container entrance - faster */
+/* FAQ container entrance */
 @keyframes faq-container-enter {
   0% {
     opacity: 0;
@@ -155,7 +200,7 @@ body {
   will-change: transform, opacity;
 }
 
-/* Faster staggered entrance */
+/* FAQ item entrance */
 @keyframes faq-item-enter {
   0% {
     opacity: 0;
@@ -172,7 +217,7 @@ body {
   will-change: transform, opacity;
 }
 
-/* Instant button hover */
+/* FAQ button hover */
 .faq-button {
   position: relative;
   transition: padding-left 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -182,7 +227,7 @@ body {
   padding-left: 6px;
 }
 
-/* Instant icon background */
+/* FAQ icon wrapper */
 .faq-icon-wrapper {
   display: flex;
   align-items: center;
@@ -198,7 +243,7 @@ body {
   background-color: rgba(79, 70, 229, 0.1);
 }
 
-/* Instant smooth arrow rotation */
+/* FAQ arrow rotation */
 .faq-arrow {
   width: 20px;
   height: 20px;
@@ -216,7 +261,7 @@ body {
   color: #4f46e5;
 }
 
-/* Lightning-fast height animation with grid */
+/* FAQ content height animation */
 .faq-content {
   display: grid;
   grid-template-rows: 0fr;
@@ -229,7 +274,7 @@ body {
   grid-template-rows: 1fr;
 }
 
-/* Instant content fade-in */
+/* FAQ content fade-in */
 .faq-content-inner {
   min-height: 0;
   padding-top: 0;
@@ -251,7 +296,7 @@ body {
   transform: translate3d(0, 0, 0);
 }
 
-/* Faster header fade */
+/* FAQ header fade */
 @keyframes faq-header-fade {
   0% {
     opacity: 0;
@@ -267,7 +312,7 @@ body {
   animation: faq-header-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Faster CTA entrance */
+/* FAQ CTA entrance */
 @keyframes faq-cta-enter {
   0% {
     opacity: 0;
@@ -284,7 +329,7 @@ body {
   will-change: transform, opacity;
 }
 
-/* Minimal stagger delays */
+/* FAQ section stagger delays */
 .faq-section {
   animation: faq-item-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -293,17 +338,93 @@ body {
 .faq-section:nth-child(2) { animation-delay: 0.08s; }
 .faq-section:nth-child(3) { animation-delay: 0.11s; }
 
+/* ============================================
+   MODAL ANIMATIONS
+   ============================================ */
 
-/* Smooth transitions for interactive elements */
-button, a, .interactive {
+/* Backdrop fade in (legacy) */
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+  }
+  to { 
+    opacity: 1; 
+  }
+}
+
+/* Modal scale in */
+@keyframes scaleIn {
+  from { 
+    opacity: 0; 
+    transform: scale(0.95); 
+  }
+  to { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+}
+
+/* Backdrop with instant blur */
+@keyframes backdropFadeIn {
+  from { 
+    background-color: rgba(15, 23, 42, 0);
+  }
+  to { 
+    background-color: rgba(15, 23, 42, 0.8);
+  }
+}
+
+/* Legacy backdrop animation (for other modals if needed) */
+.modal-backdrop-animation {
+  animation: fadeIn 0.2s ease-out;
+  will-change: opacity;
+}
+
+/* Modal scale animation */
+.modal-scale-animation {
+  animation: scaleIn 0.3s ease-out;
+  will-change: transform, opacity;
+}
+
+/* Instant blur backdrop (recommended for all modals) */
+.modal-backdrop-instant-blur {
+  background-color: rgba(15, 23, 42, 0);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: backdropFadeIn 0.15s ease-out forwards;
+  will-change: background-color;
+}
+
+/* ============================================
+   INTERACTIVE ELEMENTS
+   ============================================ */
+
+button, 
+a, 
+.interactive {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-button:active, .interactive:active {
+button:active, 
+.interactive:active {
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Reduced motion support for accessibility */
+/* ============================================
+   PERFORMANCE OPTIMIZATIONS
+   ============================================ */
+
+/* Hardware acceleration hint */
+.gpu-accelerate {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* ============================================
+   ACCESSIBILITY: REDUCED MOTION
+   ============================================ */
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -313,17 +434,28 @@ button:active, .interactive:active {
     transition-duration: 0.01ms !important;
   }
   
+  /* Disable all animations */
   .page-anim,
   .animate-scroll,
   .animate-progress-indeterminate,
-  .animate-fade-in-up {
+  .animate-fade-in-up,
+  .modal-backdrop-animation,
+  .modal-scale-animation,
+  .modal-backdrop-instant-blur,
+  .faq-container,
+  .faq-item,
+  .faq-section,
+  .faq-header,
+  .faq-cta {
     animation: none !important;
   }
-}
-
-/* Hardware acceleration hint */
-.gpu-accelerate {
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-  perspective: 1000px;
+  
+  /* Instant transitions only */
+  .faq-arrow,
+  .faq-content,
+  .faq-content-inner,
+  .faq-icon-wrapper,
+  .faq-button {
+    transition-duration: 0.01ms !important;
+  }
 }

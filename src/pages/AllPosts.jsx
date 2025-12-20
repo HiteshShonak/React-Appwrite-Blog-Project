@@ -1,23 +1,103 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import appwriteService from '../appwrite/config.js';
 import { PostCard, Container } from '../Components';
-import { Query } from 'appwrite';
 import { useSelector, useDispatch } from 'react-redux';
 import { setPosts } from '../Store/postSlice';
 import { setMultipleRatings } from '../Store/ratingSlice';
 import { AllPostsSkeleton } from '../Components/Skeletons.jsx';
 
+// ============================================================
+// 🗄️ LOCALSTORAGE CACHE UTILITIES
+// ============================================================
+const CACHE_KEYS = {
+    ALL_POSTS: 'all_posts_cache',
+    ALL_RATINGS: 'all_posts_ratings_cache',
+    CACHE_TIMESTAMP: 'all_posts_cache_timestamp'
+};
+
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+const isCacheValid = () => {
+    try {
+        const timestamp = localStorage.getItem(CACHE_KEYS.CACHE_TIMESTAMP);
+        if (!timestamp) return false;
+        
+        const cacheAge = Date.now() - parseInt(timestamp, 10);
+        return cacheAge < CACHE_DURATION;
+    } catch (error) {
+        console.error('Error checking cache validity:', error);
+        return false;
+    }
+};
+
+const getCachedData = () => {
+    try {
+        if (!isCacheValid()) {
+            clearCache();
+            return null;
+        }
+
+        const postsData = localStorage.getItem(CACHE_KEYS.ALL_POSTS);
+        const ratingsData = localStorage.getItem(CACHE_KEYS.ALL_RATINGS);
+
+        if (!postsData) return null;
+
+        return {
+            posts: JSON.parse(postsData),
+            ratings: ratingsData ? JSON.parse(ratingsData) : {}
+        };
+    } catch (error) {
+        console.error('Error reading cache:', error);
+        clearCache();
+        return null;
+    }
+};
+
+const saveCacheData = (posts, ratings) => {
+    try {
+        localStorage.setItem(CACHE_KEYS.ALL_POSTS, JSON.stringify(posts));
+        localStorage.setItem(CACHE_KEYS.ALL_RATINGS, JSON.stringify(ratings));
+        localStorage.setItem(CACHE_KEYS.CACHE_TIMESTAMP, Date.now().toString());
+    } catch (error) {
+        console.error('Error saving cache:', error);
+        clearCache();
+        try {
+            localStorage.setItem(CACHE_KEYS.ALL_POSTS, JSON.stringify(posts));
+            localStorage.setItem(CACHE_KEYS.ALL_RATINGS, JSON.stringify(ratings));
+            localStorage.setItem(CACHE_KEYS.CACHE_TIMESTAMP, Date.now().toString());
+        } catch (retryError) {
+            console.error('Failed to save cache after retry:', retryError);
+        }
+    }
+};
+
+const clearCache = () => {
+    try {
+        Object.values(CACHE_KEYS).forEach(key => {
+            localStorage.removeItem(key);
+        });
+    } catch (error) {
+        console.error('Error clearing cache:', error);
+    }
+};
 
 function AllPosts() {
     const posts = useSelector((state) => state.posts.posts);
     const dispatch = useDispatch();
 
-    const [loading, setLoading] = useState(posts.length === 0);
+    const [loading, setLoading] = useState(false);
+    const isMountedRef = useRef(true);
+    const hasFetchedRef = useRef(false);
 
-    const postCount = useMemo(() => posts.length, [posts.length]);
+    const postCount = posts.length;
 
-    // ✅ MOVE prefetchRatings OUTSIDE useEffect (using useCallback)
+    // ✅ PERFECT: Prefetch ratings with guard clause
     const prefetchRatings = useCallback(async (postsList) => {
+        // ✅ GEMINI'S FIX: Guard clause for empty arrays
+        if (!postsList || postsList.length === 0) return {};
+        
+        if (!isMountedRef.current) return {};
+        
         try {
             const ratingsPromises = postsList.map(post => 
                 appwriteService.getPostRatings(post.$id)
@@ -34,6 +114,8 @@ function AllPosts() {
 
             const results = await Promise.all(ratingsPromises);
             
+            if (!isMountedRef.current) return {};
+            
             const ratingsMap = {};
             results.forEach(result => {
                 if (result) {
@@ -41,30 +123,108 @@ function AllPosts() {
                 }
             });
 
-            dispatch(setMultipleRatings(ratingsMap));
+            // ✅ Only dispatch if we have ratings
+            if (Object.keys(ratingsMap).length > 0) {
+                dispatch(setMultipleRatings(ratingsMap));
+            }
+            
+            return ratingsMap;
         } catch (error) {
             console.error("Error prefetching ratings:", error);
+            return {};
         }
-    }, [dispatch]); // ✅ Add dispatch as dependency
+    }, [dispatch]);
 
-    // ✅ FIXED useEffect - now reacts to posts changes
+    // ✅ Multi-layer caching: Redux → localStorage → Database
     useEffect(() => {
-        if (posts.length === 0) {
-            setLoading(true);
-            
-            appwriteService.getPosts().then(async (response) => {
-                if (response?.documents) {
-                    dispatch(setPosts(response.documents));
-                    await prefetchRatings(response.documents);
-                }
-            }).catch((error) => {
-                console.error("Error fetching posts:", error);
-            }).finally(() => setLoading(false));
-        } else {
-            setLoading(false);
-        }
-    }, [dispatch, prefetchRatings]);
+        isMountedRef.current = true;
 
+        if (hasFetchedRef.current) {
+            return;
+        }
+
+        const fetchData = async () => {
+            // Layer 1: Check Redux cache
+            if (posts.length > 0) {
+                hasFetchedRef.current = true;
+                return;
+            }
+
+            setLoading(true);
+
+            // Layer 2: Check localStorage cache
+            const cachedData = getCachedData();
+            
+            if (cachedData && cachedData.posts.length > 0) {
+                if (isMountedRef.current) {
+                    dispatch(setPosts(cachedData.posts));
+                    
+                    // ✅ Only dispatch ratings if we have any
+                    if (Object.keys(cachedData.ratings).length > 0) {
+                        dispatch(setMultipleRatings(cachedData.ratings));
+                    }
+                    
+                    setLoading(false);
+                    hasFetchedRef.current = true;
+                }
+                return;
+            }
+
+            // Layer 3: Fetch from database
+            try {
+                const response = await appwriteService.getPosts();
+                
+                if (!isMountedRef.current) return;
+                
+                if (response?.documents) {
+                    const allPosts = response.documents;
+                    const ratingsMap = await prefetchRatings(allPosts);
+
+                    if (!isMountedRef.current) return;
+
+                    // ✅ Save to cache
+                    saveCacheData(allPosts, ratingsMap);
+
+                    // ✅ Update Redux
+                    dispatch(setPosts(allPosts));
+                    // Ratings already dispatched by prefetchRatings (if any)
+                    
+                    hasFetchedRef.current = true;
+                }
+            } catch (error) {
+                console.error("Error fetching posts:", error);
+                
+                // Try stale cache on error
+                try {
+                    const staleCacheData = localStorage.getItem(CACHE_KEYS.ALL_POSTS);
+                    const staleRatingsData = localStorage.getItem(CACHE_KEYS.ALL_RATINGS);
+                    
+                    if (staleCacheData) {
+                        const stalePosts = JSON.parse(staleCacheData);
+                        const staleRatings = staleRatingsData ? JSON.parse(staleRatingsData) : {};
+                        
+                        dispatch(setPosts(stalePosts));
+                        
+                        if (Object.keys(staleRatings).length > 0) {
+                            dispatch(setMultipleRatings(staleRatings));
+                        }
+                    }
+                } catch (cacheError) {
+                    console.error('Failed to use stale cache:', cacheError);
+                }
+            } finally {
+                if (isMountedRef.current) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        fetchData();
+
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, [dispatch, prefetchRatings]);
 
     if (loading) {
         return <AllPostsSkeleton />;

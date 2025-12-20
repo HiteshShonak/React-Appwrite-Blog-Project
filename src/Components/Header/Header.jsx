@@ -1,30 +1,38 @@
+import React, { memo } from 'react';
 import Container from "../Container/Container.jsx";
 import logo from '../../assets/Logo.webp';
-import { useSelector } from 'react-redux';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 
+// ✅ OPTIMIZATION: Move static data outside component
+const NAV_ITEMS = [
+  { name: 'Home', slug: '/', active: true },
+  { name: 'All Posts', slug: '/all-posts', active: true },
+  { name: 'Dashboard', slug: '/dashboard', active: true },
+];
 
-function Header() {
-  const authStatus = useSelector((state) => state.auth.status);
-  const navigate = useNavigate();
-
-
-  const navItems = [
-    { name: 'Home', slug: '/', active: true },
-    { name: 'All Posts', slug: '/all-posts', active: authStatus },
-    { name: 'Dashboard', slug: '/dashboard', active: true },
-  ];
-
-
+// ✅ OPTIMIZATION: Wrap in memo() to prevent unnecessary re-renders
+const Header = memo(() => {
   return (
     <header className='flex items-center w-full p-2 header user-drag-none user-select-none'>
+      {/* ✅ ENHANCEMENT 3: Skip to Content Link for Accessibility */}
+      <a 
+        href="#main-content" 
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-indigo-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg focus:font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-300"
+      >
+        Skip to content
+      </a>
+
       <Container>
         <div className='flex items-center justify-between w-full' style={{gap: 'var(--spacing-md)'}}>
           {/* Logo */}
-          <Link to="/" className="shrink-0">
+          <Link 
+            to="/" 
+            className="shrink-0"
+            aria-label="Homepage"
+          >
             <img 
               src={logo} 
-              alt="Logo" 
+              alt="Blog Ideas & Stories Logo" 
               style={{
                 width: 'var(--logo-header-w)', 
                 height: 'var(--logo-header-h)', 
@@ -33,13 +41,15 @@ function Header() {
             />
           </Link>
 
-
           {/* Navigation with responsive pill button design */}
-          <nav className="flex sm:justify-center max-sm:justify-start max-sm:flex-1">
+          <nav 
+            className="flex sm:justify-center max-sm:justify-start max-sm:flex-1"
+            aria-label="Main navigation"
+          >
             <ul className="flex items-center gap-1.5 sm:gap-2 max-sm:w-full">
-              {navItems.map((item, index) => (
+              {NAV_ITEMS.map((item) => (
                 item.active && (
-                  <li key={index} className="max-sm:flex-1">
+                  <li key={item.slug} className="max-sm:flex-1"> {/* ✅ ENHANCEMENT 1: Unique key */}
                     <NavLink 
                       to={item.slug}
                       className={({ isActive }) => 
@@ -50,8 +60,13 @@ function Header() {
                         }`
                       }
                       style={{ fontSize: 'clamp(0.75rem, 2vw, 1rem)' }}
+                      aria-label={`Navigate to ${item.name}`}
                     >
-                      {item.name}
+                      {({ isActive }) => ( /* ✅ ENHANCEMENT 2: aria-current */
+                        <span aria-current={isActive ? 'page' : undefined}>
+                          {item.name}
+                        </span>
+                      )}
                     </NavLink>
                   </li>
                 )
@@ -59,9 +74,8 @@ function Header() {
             </ul>
           </nav>            
 
-
           {/* Tagline - hidden on mobile */}
-          <div className='text-center max-sm:hidden shrink-0'>
+          <div className='text-center max-sm:hidden shrink-0' aria-hidden="true">
             <h1 
               className='font-black tracking-tight'
               style={{ fontSize: 'clamp(1.25rem, 2.5vw, 1.875rem)' }}
@@ -81,7 +95,8 @@ function Header() {
       </Container>
     </header>
   );
-}
+});
 
+Header.displayName = 'Header';
 
 export default Header;

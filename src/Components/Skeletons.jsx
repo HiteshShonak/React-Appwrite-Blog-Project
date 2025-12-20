@@ -445,100 +445,110 @@ export const FaqSkeleton = () => {
 // 9. LOGIN SKELETON (Exact Nested Match)
 // ==========================================
 export const LoginSkeleton = () => {
-    return (
-        // 1. Outer Wrapper: Matches src/pages/Login.jsx (py-8 px-4)
-        <div className='py-8 px-4 animate-pulse'>
-            
-            {/* 2. Inner Wrapper: Matches src/Components/Login.jsx (relative pt-20) */}
-            <div className='relative pt-20'>
-                
-                {/* 3. Card: Matches max-w-md mx-auto p-6 */}
-                <div className='max-w-md mx-auto p-6 border border-slate-200 rounded-lg shadow-lg bg-white'>
-                    
-                    {/* Heading */}
-                    <div className='h-8 bg-slate-200 rounded w-2/3 mx-auto mb-6'></div>
-                    
-                    {/* Form Container */}
-                    <div className='space-y-4 flex flex-col justify-center'>
-                        
-                        {/* Input 1: Email */}
-                        <div>
-                            <div className='h-4 bg-slate-200 rounded w-16 mb-2'></div>
-                            <div className="h-10 bg-slate-200 rounded-lg w-full"></div>
-                        </div>
-
-                        {/* Input 2: Password */}
-                        <div>
-                            <div className='h-4 bg-slate-200 rounded w-20 mb-2'></div>
-                            <div className="h-10 bg-slate-200 rounded-lg w-full"></div>
-                        </div>
-
-                        {/* Button */}
-                        <div className='h-12 bg-slate-200 rounded-lg w-full mt-2'></div>
-                    </div>
-
-                    {/* Footer Text */}
-                    <div className='mt-4 h-4 bg-slate-200 rounded w-1/2 mx-auto'></div>
-                </div>
-            </div>
+  return (
+    // ✅ Matches Login.jsx wrapper exactly (relative pt-20)
+    <div className='relative pt-30 w-full min-h-screen pb-20'>
+      <div className='max-w-md mx-auto p-6 border border-gray-200 rounded-lg shadow-lg bg-white'>
+        
+        {/* Header Section */}
+        <div className="mb-6 flex flex-col items-center space-y-2">
+          {/* Title "Login to Your Account" */}
+          <div className="h-8 w-64 bg-slate-200 rounded-md animate-pulse"></div>
+          {/* Subtitle "Welcome back..." */}
+          <div className="h-4 w-48 bg-slate-200 rounded-md animate-pulse"></div>
         </div>
-    );
+
+        {/* Form Fields */}
+        <div className='space-y-5'>
+          {/* Email Field */}
+          <div>
+            {/* Label */}
+            <div className="h-4 w-12 bg-slate-200 rounded animate-pulse mb-1.5 ml-1"></div>
+            {/* Input Box */}
+            <div className="h-11 w-full bg-slate-200 rounded-lg animate-pulse"></div>
+          </div>
+
+          {/* Password Field */}
+          <div>
+            {/* Label (matches mb-1.5 pl-1 spacing) */}
+            <div className="h-4 w-20 bg-slate-200 rounded animate-pulse mb-1.5 ml-1"></div>
+            {/* Input Box */}
+            <div className="h-11 w-full bg-slate-200 rounded-lg animate-pulse"></div>
+          </div>
+
+          {/* Login Button (h-12 matches button height) */}
+          <div className="pt-2">
+            <div className="h-12 w-full bg-slate-300 rounded-lg animate-pulse"></div>
+          </div>
+        </div>
+
+        {/* Footer Link Section */}
+        <div className='mt-6 flex justify-center'>
+          <div className="h-4 w-48 bg-slate-200 rounded animate-pulse"></div>
+        </div>
+
+      </div>
+    </div>
+  );
 };
 
 // ==========================================
 // 10. SIGNUP SKELETON (Exact Match)
 // ==========================================
 export const SignupSkeleton = () => {
-    return (
-        // 1. Page Wrapper: Matches src/pages/Signup.jsx (py-8 px-4)
-        <div className='py-8 px-4 animate-pulse'>
-            
-            {/* 2. Component Wrapper: Matches src/Components/Signup.jsx (relative pt-10) */}
-            <div className='relative pt-10'>
-                
-                {/* 3. Card: Matches max-w-md mx-auto p-6 */}
-                <div className='max-w-md mx-auto p-6 border border-slate-200 rounded-lg shadow-lg bg-white'>
-                    
-                    {/* Heading */}
-                    <div className='h-8 bg-slate-200 rounded w-2/3 mx-auto mb-6'></div>
-                    
-                    {/* Form Container */}
-                    <div className='space-y-4 flex justify-center flex-col'>
-                        
-                        {/* Input 1: Full Name */}
-                        <div>
-                            <div className='h-4 bg-slate-200 rounded w-20 mb-2'></div>
-                            <div className="h-10 bg-slate-200 rounded-lg w-full"></div>
-                        </div>
-
-                        {/* Input 2: Username */}
-                        <div>
-                            <div className='h-4 bg-slate-200 rounded w-20 mb-2'></div>
-                            <div className="h-10 bg-slate-200 rounded-lg w-full"></div>
-                        </div>
-
-                        {/* Input 3: Email */}
-                        <div>
-                            <div className='h-4 bg-slate-200 rounded w-16 mb-2'></div>
-                            <div className="h-10 bg-slate-200 rounded-lg w-full"></div>
-                        </div>
-
-                        {/* Input 4: Password */}
-                        <div>
-                            <div className='h-4 bg-slate-200 rounded w-20 mb-2'></div>
-                            <div className="h-10 bg-slate-200 rounded-lg w-full"></div>
-                        </div>
-
-                        {/* Button */}
-                        <div className='h-12 bg-slate-200 rounded-lg w-full mt-2'></div>
-                    </div>
-
-                    {/* Footer Text */}
-                    <div className='mt-4 h-4 bg-slate-200 rounded w-1/2 mx-auto'></div>
-                </div>
-            </div>
+  return (
+    // 🔒 FIXED: Matches Signup.jsx outer wrapper exactly
+    <div className='relative pt-20 pb-20 w-full min-h-screen'>
+      <div className='max-w-md mx-auto p-6 border border-gray-200 rounded-lg shadow-lg bg-white'>
+        
+        {/* Header */}
+        <div className="mb-6 flex flex-col items-center space-y-2">
+          <div className="h-8 w-64 bg-slate-200 rounded-md animate-pulse"></div>
+          <div className="h-4 w-40 bg-slate-200 rounded-md animate-pulse"></div>
         </div>
-    );
+
+        {/* Form Fields */}
+        <div className='space-y-5'>
+          {/* Full Name */}
+          <div>
+            <div className="h-4 w-20 bg-slate-200 rounded animate-pulse mb-2 ml-1"></div>
+            <div className="h-11 w-full bg-slate-200 rounded-lg animate-pulse"></div>
+          </div>
+
+          {/* Username */}
+          <div>
+            <div className="h-4 w-20 bg-slate-200 rounded animate-pulse mb-2 ml-1"></div>
+            <div className="h-11 w-full bg-slate-200 rounded-lg animate-pulse"></div>
+            <div className="h-3 w-48 bg-slate-100 rounded animate-pulse mt-2 ml-1"></div>
+          </div>
+
+          {/* Email */}
+          <div>
+            <div className="h-4 w-16 bg-slate-200 rounded animate-pulse mb-2 ml-1"></div>
+            <div className="h-11 w-full bg-slate-200 rounded-lg animate-pulse"></div>
+          </div>
+
+          {/* Password */}
+          <div>
+            <div className="h-4 w-20 bg-slate-200 rounded animate-pulse mb-2 ml-1"></div>
+            <div className="h-11 w-full bg-slate-200 rounded-lg animate-pulse"></div>
+            <div className="h-3 w-56 bg-slate-100 rounded animate-pulse mt-2 ml-1"></div>
+          </div>
+
+          {/* Button */}
+          <div className="pt-2">
+            <div className="h-12 w-full bg-slate-300 rounded-lg animate-pulse"></div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className='mt-6 flex justify-center'>
+          <div className="h-4 w-56 bg-slate-200 rounded animate-pulse"></div>
+        </div>
+
+      </div>
+    </div>
+  );
 };
 
 // ==========================================

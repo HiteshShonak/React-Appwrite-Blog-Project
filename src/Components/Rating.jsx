@@ -1,58 +1,113 @@
-import React, { useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux'; // ✅ ADD useDispatch
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { createPortal } from 'react-dom';
 import appwriteService from '../appwrite/config';
-import { setMultipleRatings } from '../Store/ratingSlice'; // ✅ ADD THIS
+import { setMultipleRatings } from '../Store/ratingSlice';
+import { Link } from 'react-router-dom';
 
+// ✅ HELPER: Calculate average rating (DRY principle)
+const calculateAverageRating = (ratings) => {
+    if (!ratings || ratings.length === 0) return 0;
+    const total = ratings.reduce((acc, curr) => acc + curr.stars, 0);
+    return parseFloat((total / ratings.length).toFixed(1));
+};
 
 function Rating({ postId, postAuthorId }) {
+    // ✅ Early return if no postId
+    if (!postId) {
+        return (
+            <div className="text-center py-6 text-slate-400 text-sm">
+                Unable to load ratings.
+            </div>
+        );
+    }
+
     const [ratings, setRatings] = useState([]);
     const [userRating, setUserRating] = useState(0);
     const [ratingId, setRatingId] = useState(null);
     const [hover, setHover] = useState(0);
     const [submitting, setSubmitting] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    
     const userData = useSelector((state) => state.auth.userData);
-    const dispatch = useDispatch(); // ✅ ADD THIS
+    const dispatch = useDispatch();
 
-    // Check if current user is the post author
-    const isAuthor = userData && postAuthorId && userData.$id === postAuthorId;
+    // Memoize isAuthor check
+    const isAuthor = useMemo(() => 
+        userData && postAuthorId && userData.$id === postAuthorId,
+        [userData, postAuthorId]
+    );
 
-    const fetchRatings = () => {
-        appwriteService.getPostRatings(postId).then((data) => {
-            if (data) {
-                setRatings(data.documents);
-                if (userData) {
-                    const myRating = data.documents.find(r => r.userId === userData.$id);
-                    if (myRating) {
-                        setUserRating(myRating.stars);
-                        setRatingId(myRating.$id);
-                    } else {
-                        setUserRating(0);
-                        setRatingId(null);
-                    }
+    // Fetch ratings ONLY when postId changes
+    useEffect(() => {
+        let isCancelled = false;
+        
+        const loadRatings = async () => {
+            try {
+                const data = await appwriteService.getPostRatings(postId);
+                if (data?.documents && !isCancelled) {
+                    setRatings(data.documents);
+                    
+                    const avgRating = calculateAverageRating(data.documents);
+                    dispatch(setMultipleRatings({ [postId]: avgRating }));
+                }
+            } catch (error) {
+                if (!isCancelled) {
+                    console.error("Error fetching ratings:", error);
                 }
             }
-        });
-    };
+        };
+        
+        loadRatings();
+        
+        return () => {
+            isCancelled = true;
+        };
+    }, [postId, dispatch]);
+
+    // ✅ PERFECTED: Extract user's rating with all cases explicitly handled
+    useEffect(() => {
+        if (!userData) {
+            // Case 1: User not logged in
+            setUserRating(0);
+            setRatingId(null);
+            return;
+        }
+
+        if (ratings.length === 0) {
+            // Case 2: User logged in, but no ratings yet
+            setUserRating(0);
+            setRatingId(null);
+            return;
+        }
+
+        // Case 3: User logged in + ratings exist
+        const myRating = ratings.find(r => r.userId === userData.$id);
+        if (myRating) {
+            setUserRating(myRating.stars);
+            setRatingId(myRating.$id);
+        } else {
+            setUserRating(0);
+            setRatingId(null);
+        }
+    }, [userData, ratings]);
 
     // Scroll lock when modal is open
     useEffect(() => {
-        if (isDeleteModalOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
+        document.body.style.overflow = isDeleteModalOpen ? 'hidden' : 'unset';
         return () => { document.body.style.overflow = 'unset'; };
     }, [isDeleteModalOpen]);
 
-    useEffect(() => { fetchRatings(); }, [postId, userData]);
+    // Memoize average rating calculation
+    const averageRating = useMemo(() => 
+        ratings.length 
+            ? (ratings.reduce((acc, curr) => acc + curr.stars, 0) / ratings.length).toFixed(1) 
+            : "0.0",
+        [ratings]
+    );
 
-    const averageRating = ratings.length 
-        ? (ratings.reduce((acc, curr) => acc + curr.stars, 0) / ratings.length).toFixed(1) 
-        : "0.0";
-
-    const handleRate = async (stars) => {
+    // Handle rating submission
+    const handleRate = useCallback(async (stars) => {
         if (!userData || submitting || isAuthor) return;
         setSubmitting(true);
         const previousRatings = [...ratings];
@@ -73,19 +128,13 @@ function Rating({ postId, postAuthorId }) {
         try {
             await appwriteService.setRating({ postId, userId: userData.$id, stars });
             
-            // ✅ FETCH FRESH DATA AND UPDATE REDUX
             const freshData = await appwriteService.getPostRatings(postId);
             if (freshData && freshData.documents) {
                 setRatings(freshData.documents);
                 
-                // Calculate new average
-                const total = freshData.documents.reduce((acc, curr) => acc + curr.stars, 0);
-                const newAverage = parseFloat((total / freshData.documents.length).toFixed(1));
-                
-                // ✅ UPDATE REDUX CACHE (PostCards will auto-update!)
+                const newAverage = calculateAverageRating(freshData.documents);
                 dispatch(setMultipleRatings({ [postId]: newAverage }));
                 
-                // Update user's rating state
                 const myRating = freshData.documents.find(r => r.userId === userData.$id);
                 if (myRating) {
                     setUserRating(myRating.stars);
@@ -99,9 +148,10 @@ function Rating({ postId, postAuthorId }) {
         } finally {
             setSubmitting(false);
         }
-    };
+    }, [userData, submitting, isAuthor, ratings, userRating, postId, dispatch]);
 
-    const confirmDelete = async () => {
+    // Delete rating
+    const confirmDelete = useCallback(async () => {
         setSubmitting(true);
         setIsDeleteModalOpen(false);
         const previousRatings = [...ratings];
@@ -114,22 +164,12 @@ function Rating({ postId, postAuthorId }) {
         try {
             await appwriteService.deleteRating(ratingId);
             
-            // ✅ FETCH FRESH DATA AND UPDATE REDUX
             const freshData = await appwriteService.getPostRatings(postId);
             if (freshData && freshData.documents) {
                 setRatings(freshData.documents);
                 
-                if (freshData.documents.length > 0) {
-                    // Calculate new average
-                    const total = freshData.documents.reduce((acc, curr) => acc + curr.stars, 0);
-                    const newAverage = parseFloat((total / freshData.documents.length).toFixed(1));
-                    
-                    // ✅ UPDATE REDUX CACHE
-                    dispatch(setMultipleRatings({ [postId]: newAverage }));
-                } else {
-                    // ✅ No ratings left, set to 0
-                    dispatch(setMultipleRatings({ [postId]: 0 }));
-                }
+                const newAverage = calculateAverageRating(freshData.documents);
+                dispatch(setMultipleRatings({ [postId]: newAverage }));
             }
         } catch (error) {
             console.error("Delete failed:", error);
@@ -139,7 +179,7 @@ function Rating({ postId, postAuthorId }) {
         } finally {
             setSubmitting(false);
         }
-    };
+    }, [ratings, userRating, userData, ratingId, postId, dispatch]);
 
     return (
         <>
@@ -168,7 +208,6 @@ function Rating({ postId, postAuthorId }) {
                 {/* RIGHT: Interaction */}
                 <div className="flex flex-col items-center md:items-end gap-2">
                     {isAuthor ? (
-                        // Grayed out stars with author badge
                         <div className="flex flex-col items-center gap-2">
                             <div className="relative">
                                 <div className="flex items-center gap-1 bg-slate-50 px-4 py-2 rounded-full border border-slate-200 shadow-sm opacity-60 cursor-not-allowed">
@@ -214,7 +253,9 @@ function Rating({ postId, postAuthorId }) {
                             </div>
                             <div className="h-5 flex items-center justify-end w-full px-2">
                                 {!userData ? (
-                                    <span className="text-xs text-slate-400 font-medium">Log in to vote</span>
+                                    <span className="text-xs text-slate-400 font-medium">
+                                        Enjoying this story? <Link to="/signup" className="text-indigo-600 font-bold hover:text-indigo-700 transition-colors">Sign up</Link> to vote
+                                    </span>
                                 ) : userRating > 0 ? (
                                     <button 
                                         onClick={() => setIsDeleteModalOpen(true)} 
@@ -224,7 +265,9 @@ function Rating({ postId, postAuthorId }) {
                                         Remove rating
                                     </button>
                                 ) : (
-                                    <span className="text-xs text-indigo-400 font-medium opacity-0 animate-fadeIn">Tap a star</span>
+                                    <span className="text-xs text-slate-400 font-medium animate-fadeIn">
+                                        Enjoying this story? <span className="text-indigo-600 font-bold">Give it stars</span>
+                                    </span>
                                 )}
                             </div>
                         </>
@@ -232,7 +275,7 @@ function Rating({ postId, postAuthorId }) {
                 </div>
             </div>
 
-            {/* Delete confirmation modal - centered using portal */}
+            {/* Delete confirmation modal */}
             {isDeleteModalOpen && createPortal(
                 <div 
                     className="gpu-accelerate fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"

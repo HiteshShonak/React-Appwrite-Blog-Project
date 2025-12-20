@@ -1,26 +1,46 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { PostForm, Container } from '../Components'
 import appwriteService from '../appwrite/config.js'
 import { useParams, useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 
+
 function EditPost() {
     const [post, setPost] = useState(null);
     const { slug } = useParams();
     const navigate = useNavigate();
+    const isMountedRef = useRef(true); // ✅ Track mount status
 
     useEffect(() => {
-        if (slug) {
-            appwriteService.getPost(slug).then((post) => {
+        isMountedRef.current = true;
+
+        if (!slug) {
+            navigate('/');
+            return;
+        }
+
+        // ✅ Fetch with error handling and abort checks
+        appwriteService.getPost(slug)
+            .then((post) => {
+                if (!isMountedRef.current) return; // ✅ Abort if unmounted
+                
                 if (post) {
                     setPost(post);
                 } else {
                     navigate('/');
                 }
+            })
+            .catch((error) => {
+                console.error('Error fetching post:', error);
+                if (isMountedRef.current) {
+                    navigate('/'); // ✅ Redirect on error
+                }
             });
-        } else {
-            navigate('/');
-        }
+
+        // ✅ Cleanup function
+        return () => {
+            isMountedRef.current = false;
+        };
     }, [slug, navigate]);
 
     
@@ -31,7 +51,6 @@ function EditPost() {
                     <div className="relative flex h-24 w-24 mb-8">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-20"></span>
                         <span className="relative inline-flex rounded-full h-24 w-24 bg-linear-to-tr from-indigo-600 to-indigo-500 shadow-2xl shadow-indigo-500/40 items-center justify-center border border-indigo-400/20">
-                            {/* Bouncing Pencil Icon (Matches PostForm) */}
                             <svg className="w-10 h-10 text-white animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                             </svg>
@@ -56,7 +75,6 @@ function EditPost() {
         <div className='py-12 bg-slate-50 min-h-screen page-anim px-2 sm:px-4'>
             <Container>
                 <div className="max-w-6xl mx-auto">
-                    {/* Header */}
                     <div className="mb-8 flex items-center justify-between">
                         <div>
                             <h1 className='text-3xl font-bold text-slate-900 tracking-tight'>Edit Article</h1>
@@ -67,7 +85,6 @@ function EditPost() {
                         </span>
                     </div>
                     
-                    {/* Editor Wrapper */}
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
                         <PostForm post={post} />
                     </div>

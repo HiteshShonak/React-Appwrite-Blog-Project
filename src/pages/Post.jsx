@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { createPortal } from "react-dom";
 import appwriteService from "../appwrite/config"; 
@@ -21,12 +21,13 @@ export default function Post() {
     
     const userData = useSelector((state) => state.auth.userData);
 
-    // Post caching strategy
+    // 1. Redux Selectors (Cache Strategy)
     const allPosts = useSelector((state) => state.posts.posts);
     const trendingPosts = useSelector((state) => state.home.trendingPosts);
     const userPosts = useSelector((state) => state.dashboard.userPosts);
 
-    const cachedPost = useMemo(() => 
+    // 2. Compute Cached Post
+    const cachedPost = React.useMemo(() => 
         allPosts.find((p) => p.$id === slug) || 
         trendingPosts.find((p) => p.$id === slug) || 
         userPosts.find((p) => p.$id === slug),
@@ -36,13 +37,27 @@ export default function Post() {
     const [post, setPost] = useState(cachedPost || null);
     const [loading, setLoading] = useState(!cachedPost);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    
+    // 3. Safety Refs
+    const isMountedRef = useRef(true); 
+    const viewIncrementedRef = useRef(false);
 
-    useEffect(() => {
-        window.scrollTo(0, 0);
-    }, [slug]);
-
-    // User caching strategy
+    // 4. Derived Values (Safe to compute every render)
     const authorId = post?.UserId;
+    const postId = post?.$id;
+    const postAuthorId = post?.UserId;
+    const authorName = post?.AuthorName || 'Guest Author';
+    const authorInitials = authorName.split(' ').map(n => n[0]).join('').toUpperCase() || 'AU';
+    const isAuthor = post && userData ? post.UserId === userData.$id : false;
+    
+    // ✅ OPTIMIZED: No useMemo for simple date formatting
+    const formattedDate = post?.$createdAt 
+        ? new Date(post.$createdAt).toLocaleDateString(undefined, { 
+            year: 'numeric', month: 'short', day: 'numeric' 
+          })
+        : 'N/A';
+
+    // 5. Author Caching Strategy
     const cachedAuthor = useSelector((state) => 
         state.users && authorId ? state.users.profiles[authorId] : null
     );
@@ -50,127 +65,146 @@ export default function Post() {
     const [authorAvatarUrl, setAuthorAvatarUrl] = useState(cachedAuthor?.avatar || null); 
     const [authorUsername, setAuthorUsername] = useState(cachedAuthor?.username || null);
 
-    // Memoized computed values
-    const authorName = useMemo(() => post?.AuthorName || 'Guest Author', [post?.AuthorName]);
-    const authorInitials = useMemo(() => 
-        authorName.split(' ').map(n => n[0]).join('').toUpperCase() || 'AU',
-        [authorName]
-    );
-    const isAuthor = useMemo(() => 
-        post && userData ? post.UserId === userData.$id : false,
-        [post, userData]
-    );
-    const formattedDate = useMemo(() => 
-        post?.$createdAt ? new Date(post.$createdAt).toLocaleDateString(undefined, { 
-            year: 'numeric', month: 'short', day: 'numeric' 
-        }) : 'N/A',
-        [post?.$createdAt]
-    );
-
-    // Scroll lock effect
+    // Scroll to top on mount
     useEffect(() => {
-        if (isDeleteModalOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
+        window.scrollTo(0, 0);
+        isMountedRef.current = true;
+        // Reset view increment lock when slug changes
+        viewIncrementedRef.current = false; 
+        
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, [slug]);
+
+    // 🔒 Scroll Lock for Modal
+    useEffect(() => {
+        document.body.style.overflow = isDeleteModalOpen ? 'hidden' : 'unset';
         return () => { document.body.style.overflow = 'unset'; };
     }, [isDeleteModalOpen]);
 
-    // Fetch author data
+    // 👤 Author Data Fetching
     useEffect(() => {
-        if (post?.UserId) {
-            if (cachedAuthor) {
-                setAuthorUsername(cachedAuthor.username);
-                setAuthorAvatarUrl(cachedAuthor.avatar);
-            } else {
-                appwriteService.getUserProfile(post.UserId)
-                    .then((profile) => {
-                        if (profile) {
-                            const avatar = profile.ProfileImageFileId 
-                                ? appwriteService.getAvatarPreview(profile.ProfileImageFileId) 
-                                : null;
-                            const username = profile.Username;
+        if (!authorId) return;
 
-                            setAuthorUsername(username);
-                            setAuthorAvatarUrl(avatar);
-
-                            dispatch(cacheUserProfile({
-                                userId: post.UserId,
-                                profileData: { username, avatar }
-                            }));
-                        }
-                    })
-                    .catch(() => {});
-            }
+        // If we have Redux cache, update local state and stop.
+        if (cachedAuthor) {
+            setAuthorUsername(cachedAuthor.username);
+            setAuthorAvatarUrl(cachedAuthor.avatar);
+            return;
         }
-    }, [post?.UserId, cachedAuthor, dispatch]);
 
-    // Main post data fetch
+        // Otherwise fetch
+        appwriteService.getUserProfile(authorId)
+            .then((profile) => {
+                if (!isMountedRef.current || !profile) return;
+
+                const avatar = profile.ProfileImageFileId 
+                    ? appwriteService.getAvatarPreview(profile.ProfileImageFileId) 
+                    : null;
+                const username = profile.Username;
+
+                setAuthorUsername(username);
+                setAuthorAvatarUrl(avatar);
+
+                // Update Redux Cache
+                dispatch(cacheUserProfile({
+                    userId: authorId,
+                    profileData: { username, avatar }
+                }));
+            })
+            .catch((err) => console.error("Author fetch error:", err));
+
+    }, [authorId, cachedAuthor, dispatch]);
+
+    // 📄 Main Post Fetching
     useEffect(() => {
-        const fetchPostData = async () => {
-            if (!post) setLoading(true);
-            
-            try {
-                const currentPost = await appwriteService.getPost(slug);
+        // ✅ DRY HELPER: Handle view counts in one place
+        const handleViewIncrement = async (currentPost) => {
+            if (currentPost.Views !== undefined && !viewIncrementedRef.current && !hasViewedCookie(currentPost.$id)) {
+                viewIncrementedRef.current = true;
+                setViewedCookie(currentPost.$id);
                 
-                if (currentPost) {
-                    setPost(currentPost); 
-                    setLoading(false); 
-
-                    const postId = currentPost.$id;
-                    if (currentPost.Views !== undefined && !hasViewedCookie(postId)) {
-                        appwriteService.incrementViews(postId, currentPost.Views).then((updatedPost) => {
-                            if (updatedPost) {
-                                setViewedCookie(postId); 
-                                setPost(prev => ({ ...prev, Views: updatedPost.Views }));
-                            }
-                        });
+                try {
+                    const updatedPost = await appwriteService.incrementViews(currentPost.$id, currentPost.Views);
+                    if (updatedPost && isMountedRef.current) {
+                        setPost(prev => ({ ...prev, Views: updatedPost.Views }));
                     }
-                } else { 
-                    navigate("/"); 
+                } catch (error) {
+                    console.error("View increment failed", error);
                 }
-            } catch (error) { 
-                navigate("/"); 
             }
         };
-        
-        if (slug) fetchPostData(); 
-        else navigate("/");
-        
-    }, [slug, navigate, post]);
 
-    const handleDeleteClick = useCallback(() => {
-        setIsDeleteModalOpen(true);
-    }, []);
+        const loadPost = async () => {
+            // Scenario A: Post is in Redux Cache
+            if (cachedPost) {
+                setPost(cachedPost);
+                setLoading(false);
+                handleViewIncrement(cachedPost);
+                return;
+            }
+
+            // Scenario B: Fetch from API
+            setLoading(true);
+            try {
+                const fetchedPost = await appwriteService.getPost(slug);
+                
+                if (!isMountedRef.current) return;
+
+                if (fetchedPost) {
+                    setPost(fetchedPost);
+                    handleViewIncrement(fetchedPost);
+                } else {
+                    navigate("/");
+                }
+            } catch (error) {
+                console.error("Post fetch error:", error);
+                if (isMountedRef.current) navigate("/");
+            } finally {
+                if (isMountedRef.current) setLoading(false);
+            }
+        };
+
+        loadPost();
+
+    }, [slug, navigate, cachedPost]); // ✅ Dependencies are clean
+
+    // 🗑️ Delete Logic
+    const handleDeleteClick = useCallback(() => setIsDeleteModalOpen(true), []);
 
     const confirmDelete = useCallback(async () => {
-        const featuredImageId = post.featuredImage; 
-        const status = await appwriteService.deletePost(post.$id);
-        if (status) {
-            await appwriteService.deleteFile(featuredImageId);
+        if (!post) return;
+        
+        try {
+            const featuredImageId = post.featuredImage; 
+            const status = await appwriteService.deletePost(post.$id);
             
-            dispatch(deletePost(post.$id));
-            dispatch(deleteUserPost(post.$id));
-            dispatch(deleteTrendingPost(post.$id));
-            
-            navigate("/dashboard");
+            if (status) {
+                await appwriteService.deleteFile(featuredImageId);
+                
+                dispatch(deletePost(post.$id));
+                dispatch(deleteUserPost(post.$id));
+                dispatch(deleteTrendingPost(post.$id));
+                
+                navigate("/dashboard");
+            }
+        } catch (error) {
+            console.error("Delete failed:", error);
         }
     }, [post, dispatch, navigate]);
 
-    // 🎯 ENHANCED SKELETON - Matches exact post layout
-    if (loading) {
-        return <PostSkeleton />;
-    }
+    if (loading) return <PostSkeleton />;
 
     return post ? (
         <div className="py-8 sm:py-12 bg-slate-50 min-h-screen relative page-anim px-2 sm:px-4">
             
-            {/* Delete confirmation modal */}
+            {/* Delete Modal Portal */}
             {isDeleteModalOpen && createPortal(
                 <div 
                     className="gpu-accelerate fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
                     style={{ animation: 'fadeIn 0.2s ease-out' }}
+                    onClick={() => setIsDeleteModalOpen(false)}
                 >
                     <div 
                         className="gpu-accelerate bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 sm:p-8 border border-slate-100"
@@ -210,7 +244,6 @@ export default function Post() {
             )}
 
             <Container>
-                {/* Main article card */}
                 <article className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
                     
                     <div className="relative w-full aspect-video group overflow-hidden">
@@ -220,7 +253,6 @@ export default function Post() {
                             className="w-full h-full object-cover" 
                         />
                         
-                        {/* Author action buttons */}
                         {isAuthor && (
                             <div className="absolute top-2 sm:top-6 right-2 sm:right-6 flex gap-1.5 sm:gap-3 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                 <Link to={`/edit-post/${post.$id}`}>
@@ -246,7 +278,6 @@ export default function Post() {
                         )}
                     </div>
 
-                    {/* Content section */}
                     <div className="p-6 sm:p-8 md:p-12 pb-8 sm:pb-10">
                         <div className="mb-6 sm:mb-8 border-b border-slate-200 pb-4 sm:pb-6">
                             <h1 className="text-2xl sm:text-3xl md:text-5xl font-extrabold text-slate-900 leading-tight mb-3 sm:mb-4">
@@ -285,8 +316,8 @@ export default function Post() {
                                 </Link>
                                 <span className="font-semibold flex items-center gap-1 text-indigo-600 text-sm sm:text-base">
                                     <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                     </svg>
                                     {post.Views !== undefined ? post.Views : '...'} Views
                                 </span>
@@ -297,20 +328,18 @@ export default function Post() {
                         </div>
                     </div>
 
-                    {/* Separator */}
-                    <div className="border-t border-slate-200 mx-6 sm:mx-8 md:mx-12 mb-8 sm:mb-10"></div>
+                    <div className="border-t border-slate-200 mx-6 sm:px-8 md:mx-12 mb-8 sm:mb-10"></div>
 
-                    {/* Interaction section */}
                     <div className="px-6 sm:px-8 md:px-12 pb-8 sm:pb-12">
                         <div className="max-w-3xl mx-auto space-y-8 sm:space-y-10">
                             <section>
-                                <Rating postId={post.$id} postAuthorId={post.UserId} />
+                                <Rating postId={postId} postAuthorId={postAuthorId} />
                             </section>
                             
                             <div className="border-t border-slate-100"></div>
 
                             <section>
-                                <Comments postId={post.$id} postAuthorId={post.UserId}/>
+                                <Comments postId={postId} postAuthorId={postAuthorId}/>
                             </section>
                         </div>
                     </div>

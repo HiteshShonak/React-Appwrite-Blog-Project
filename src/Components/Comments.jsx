@@ -1,13 +1,16 @@
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { createPortal } from 'react-dom';
 import appwriteService from '../appwrite/config';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { cacheUserProfile } from '../Store/usersSlice';
 
-// Memoized individual comment component
+// ============================================================
+// 💬 MEMOIZED COMMENT ITEM COMPONENT
+// ============================================================
 const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, postAuthorId }) => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
 
     const cachedAuthor = useSelector((state) => 
         state.users && comment.userId ? state.users.profiles[comment.userId] : null
@@ -16,16 +19,17 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
     const [authorAvatarUrl, setAuthorAvatarUrl] = useState(cachedAuthor?.avatar || null);
     const [authorUsername, setAuthorUsername] = useState(cachedAuthor?.username || null);
     
+    const isTemp = comment.$id.startsWith('temp-');
+    const isPostAuthor = postAuthorId && comment.userId === postAuthorId;
+    const isOwnComment = userData && userData.$id === comment.userId;
+    
     const isLiked = useMemo(() => 
         comment.likedBy && userData && comment.likedBy.includes(userData.$id),
         [comment.likedBy, userData]
     );
     const likeCount = useMemo(() => comment.likedBy ? comment.likedBy.length : 0, [comment.likedBy]);
-    const isTemp = useMemo(() => comment.$id.startsWith('temp-'), [comment.$id]);
-    const isPostAuthor = useMemo(() => postAuthorId && comment.userId === postAuthorId, [postAuthorId, comment.userId]);
-    const isOwnComment = useMemo(() => userData && userData.$id === comment.userId, [userData, comment.userId]);
     
-    const formattedDate = useMemo(() => {
+    const formattedDate = (() => {
         if (isTemp) return 'Posting...';
         
         const date = new Date(comment.$createdAt);
@@ -37,37 +41,58 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
             month: 'short', 
             day: 'numeric' 
         });
-    }, [comment.$createdAt, isTemp]);
+    })();
 
     useEffect(() => {
-        if (!isTemp && !cachedAuthor && comment.userId) {
-            appwriteService.getUserProfile(comment.userId)
-                .then((profile) => {
-                    if (profile) {
-                        const username = profile.Username;
-                        const avatarUrl = profile.ProfileImageFileId 
-                            ? appwriteService.getAvatarPreview(profile.ProfileImageFileId) 
-                            : null;
-
-                        setAuthorUsername(username);
-                        setAuthorAvatarUrl(avatarUrl);
-                        
-                        dispatch(cacheUserProfile({
-                            userId: comment.userId,
-                            profileData: { username, avatar: avatarUrl }
-                        }));
-                    }
-                })
-                .catch(() => {}); 
-        } else if (cachedAuthor) {
-            setAuthorUsername(cachedAuthor.username);
-            setAuthorAvatarUrl(cachedAuthor.avatar);
+        if (isTemp || cachedAuthor) {
+            if (cachedAuthor) {
+                setAuthorUsername(cachedAuthor.username);
+                setAuthorAvatarUrl(cachedAuthor.avatar);
+            }
+            return;
         }
+
+        if (!comment.userId) return;
+
+        let isCancelled = false;
+
+        appwriteService.getUserProfile(comment.userId)
+            .then((profile) => {
+                if (profile && !isCancelled) {
+                    const username = profile.Username;
+                    const avatarUrl = profile.ProfileImageFileId 
+                        ? appwriteService.getAvatarPreview(profile.ProfileImageFileId) 
+                        : null;
+
+                    setAuthorUsername(username);
+                    setAuthorAvatarUrl(avatarUrl);
+                    
+                    dispatch(cacheUserProfile({
+                        userId: comment.userId,
+                        profileData: { username, avatar: avatarUrl }
+                    }));
+                }
+            })
+            .catch((error) => {
+                if (!isCancelled) {
+                    console.error('Error fetching comment author profile:', error);
+                }
+            });
+
+        return () => {
+            isCancelled = true;
+        };
     }, [comment.userId, isTemp, cachedAuthor, dispatch]);
 
     const getInitials = useCallback((name) => name ? name.charAt(0).toUpperCase() : '?', []);
     const handleDelete = useCallback(() => setDeleteCommentId(comment.$id), [comment.$id, setDeleteCommentId]);
-    const handleLike = useCallback(() => toggleLike(comment), [comment, toggleLike]);
+    const handleLike = useCallback(() => {
+        if (!userData) {
+            navigate("/login");
+            return;
+        }
+        toggleLike(comment);
+    }, [userData, comment, toggleLike, navigate]);
 
     return (
         <div className={`flex gap-3 pt-3 first:pt-0 group ${isTemp ? 'opacity-70' : 'opacity-100'}`}>
@@ -90,7 +115,6 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
             <div className="flex-1 min-w-0">
                 <div className="bg-slate-50 rounded-2xl px-4 py-3 border border-slate-100 relative group/bubble">
                     
-                    {/* Header Row */}
                     <div className="flex justify-between items-start mb-1">
                         <div className="flex items-center gap-2 flex-wrap">
                             <Link 
@@ -111,11 +135,10 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
                             </span>
                         </div>
 
-                        {/* Delete Button - Only trash icon */}
                         {isOwnComment && !isTemp && (
                             <button 
                                 onClick={handleDelete} 
-                                className="text-slate-300 hover:text-rose-500 transition-colors p-1 rounded-full hover:bg-rose-50 opacity-100 lg:opacity-0 lg:group-hover/bubble:opacity-100"
+                                className="text-slate-300 hover:text-rose-500 p-1 rounded-full hover:bg-rose-50 transition-all duration-200 opacity-100 lg:opacity-0 lg:group-hover/bubble:opacity-100"
                                 aria-label="Delete comment"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -128,11 +151,10 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
                     <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">{comment.content}</p>
                 </div>
                 
-                {/* Action Bar - Only Like button, removed duplicate Delete text button */}
                 <div className="flex items-center gap-4 mt-1 ml-2">
                     <button 
                         onClick={handleLike}
-                        disabled={!userData || isTemp}
+                        disabled={isTemp}
                         className={`text-xs font-semibold flex items-center gap-1 transition-colors ${isLiked ? 'text-rose-500' : 'text-slate-500 hover:text-slate-800'}`}
                     >
                         {isLiked ? 'Liked' : 'Like'}
@@ -146,9 +168,18 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
 
 CommentItem.displayName = 'CommentItem';
 
-
-// Main comments component
+// ============================================================
+// 💬 MAIN COMMENTS COMPONENT
+// ============================================================
 function Comments({ postId, postAuthorId }) {
+    if (!postId) {
+        return (
+            <div className="text-center py-6 text-slate-400 text-sm">
+                Unable to load comments.
+            </div>
+        );
+    }
+
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState("");
     const [loading, setLoading] = useState(true);
@@ -157,29 +188,95 @@ function Comments({ postId, postAuthorId }) {
     const [currentUserAvatar, setCurrentUserAvatar] = useState(null);
     
     const userData = useSelector((state) => state.auth.userData);
+    const dispatch = useDispatch();
+    
+    // ✅ GEMINI'S FIX #1: Add isMountedRef for handleSubmit
+    const isMountedRef = useRef(true);
 
-    // Scroll lock when modal is open
+    const cachedUserProfile = useSelector((state) => 
+        state.users && userData?.$id ? state.users.profiles[userData.$id] : null
+    );
+
+    // ✅ Mount/unmount tracking
     useEffect(() => {
-        if (deleteCommentId) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        document.body.style.overflow = deleteCommentId ? 'hidden' : 'unset';
         return () => { document.body.style.overflow = 'unset'; };
     }, [deleteCommentId]);
 
-    // Fetch Current User Avatar for Input
     useEffect(() => {
-        if (userData) {
-            appwriteService.getUserProfile(userData.$id).then((profile) => {
-                if (profile?.ProfileImageFileId) {
-                    setCurrentUserAvatar(appwriteService.getAvatarPreview(profile.ProfileImageFileId));
-                }
-            }).catch(() => {});
+        if (!userData) {
+            setCurrentUserAvatar(null);
+            return;
         }
-    }, [userData]);
 
-    // Fetch comments from API
+        if (cachedUserProfile?.avatar) {
+            setCurrentUserAvatar(cachedUserProfile.avatar);
+            return;
+        }
+
+        let isCancelled = false;
+
+        appwriteService.getUserProfile(userData.$id)
+            .then((profile) => {
+                if (profile?.ProfileImageFileId && !isCancelled) {
+                    const avatarUrl = appwriteService.getAvatarPreview(profile.ProfileImageFileId);
+                    setCurrentUserAvatar(avatarUrl);
+
+                    dispatch(cacheUserProfile({
+                        userId: userData.$id,
+                        profileData: { 
+                            username: profile.Username,
+                            avatar: avatarUrl 
+                        }
+                    }));
+                }
+            })
+            .catch((error) => {
+                if (!isCancelled) {
+                    console.error('Error fetching current user avatar:', error);
+                }
+            });
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [userData, cachedUserProfile, dispatch]);
+
+    useEffect(() => {
+        let isCancelled = false;
+
+        const loadComments = async () => {
+            setLoading(true);
+            try {
+                const data = await appwriteService.getComments(postId);
+                if (data?.documents && !isCancelled) {
+                    setComments(data.documents);
+                }
+            } catch (error) {
+                if (!isCancelled) {
+                    console.error("Error fetching comments:", error);
+                }
+            } finally {
+                if (!isCancelled) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        loadComments();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [postId]);
+
     const fetchComments = useCallback(async (isSilent = false) => {
         if (!isSilent) setLoading(true);
         try {
@@ -192,18 +289,22 @@ function Comments({ postId, postAuthorId }) {
         }
     }, [postId]);
 
-    useEffect(() => { fetchComments(); }, [fetchComments]);
-
-    // Submit new comment
+    // ✅ GEMINI'S FIX #1 & #2: Protected setState + Better rollback
     const handleSubmit = useCallback(async (e) => {
         e.preventDefault();
         if (!newComment.trim() || !userData) return;
-        setSubmitting(true);
+        
+        // ✅ Store the actual content being submitted
+        const submittedContent = newComment.trim();
+        
+        if (isMountedRef.current) {
+            setSubmitting(true);
+        }
 
         const tempId = `temp-${Date.now()}`;
         const optimisticComment = {
             $id: tempId,
-            content: newComment.trim(),
+            content: submittedContent,
             postId,
             userId: userData.$id,
             authorName: userData.name,
@@ -211,28 +312,38 @@ function Comments({ postId, postAuthorId }) {
             likedBy: []
         };
 
-        setComments((prev) => [optimisticComment, ...prev]);
-        setNewComment("");
+        if (isMountedRef.current) {
+            setComments((prev) => [optimisticComment, ...prev]);
+            setNewComment("");
+        }
 
         try {
             await appwriteService.createComment({
-                content: optimisticComment.content,
+                content: submittedContent,
                 postId,
                 userId: userData.$id,
                 authorName: userData.name,
                 likedBy: []
             });
-            fetchComments(true); 
+            
+            if (isMountedRef.current) {
+                fetchComments(true);
+            }
         } catch (error) {
             console.error("Error posting comment:", error);
-            setComments((prev) => prev.filter(c => c.$id !== tempId));
-            setNewComment(optimisticComment.content);
+            if (isMountedRef.current) {
+                setComments((prev) => prev.filter(c => c.$id !== tempId));
+                // ✅ Restore the exact text that was submitted
+                setNewComment(submittedContent);
+            }
         } finally {
-            setSubmitting(false);
+            // ✅ Protected setState
+            if (isMountedRef.current) {
+                setSubmitting(false);
+            }
         }
     }, [newComment, userData, postId, fetchComments]);
 
-    // Delete comment with optimistic update
     const confirmDelete = useCallback(async () => {
         if (!deleteCommentId) return;
         const commentToDelete = deleteCommentId;
@@ -249,7 +360,6 @@ function Comments({ postId, postAuthorId }) {
         }
     }, [deleteCommentId, comments, fetchComments]);
 
-    // Toggle like on comment
     const toggleLike = useCallback(async (comment) => {
         if (!userData) return;
         const userId = userData.$id;
@@ -271,7 +381,7 @@ function Comments({ postId, postAuthorId }) {
     const handleCommentChange = useCallback((e) => setNewComment(e.target.value), []);
     const closeModal = useCallback(() => setDeleteCommentId(null), []);
 
-    const LoadingSkeleton = useMemo(() => (
+    const renderLoadingSkeleton = () => (
         <div className="space-y-4 animate-pulse">
             {[1, 2].map((i) => (
                 <div key={i} className="flex gap-3">
@@ -283,12 +393,11 @@ function Comments({ postId, postAuthorId }) {
                 </div>
             ))}
         </div>
-    ), []);
+    );
 
     return (
         <div className="relative w-full">
             
-            {/* Delete confirmation modal */}
             {deleteCommentId && createPortal(
                 <div 
                     className="gpu-accelerate fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
@@ -377,13 +486,13 @@ function Comments({ postId, postAuthorId }) {
             ) : (
                 <div className="bg-slate-50 rounded-xl p-6 text-center mb-8 border border-slate-100">
                     <p className="text-slate-500 text-sm">
-                        <Link to="/login" className="interactive text-indigo-600 font-bold hover:underline">Log In</Link> to join the conversation.
+                        <Link to="/signup" className="interactive text-indigo-600 font-bold hover:underline">Sign Up</Link> to join the conversation.
                     </p>
                 </div>
             )}
 
             <div className="space-y-4">
-                {loading ? LoadingSkeleton : comments.length === 0 ? (
+                {loading ? renderLoadingSkeleton() : comments.length === 0 ? (
                     <div className="text-center py-6 text-slate-400 text-sm">Be the first to share your thoughts.</div>
                 ) : (
                     comments.map((comment) => (

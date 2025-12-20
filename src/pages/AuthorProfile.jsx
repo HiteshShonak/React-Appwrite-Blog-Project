@@ -4,10 +4,116 @@ import appwriteService from '../appwrite/config';
 import { Container, PostCard } from '../Components';
 import { Query } from 'appwrite';
 import { AuthorProfileSkeleton } from '../Components/Skeletons';
+import { useDispatch, useSelector } from 'react-redux';
+import { setMultipleRatings } from '../Store/ratingSlice';
 
+// ============================================================
+// 🗄️ AUTHOR PROFILE LOCALSTORAGE CACHE UTILITIES
+// ============================================================
+const AUTHOR_CACHE_PREFIX = 'author_profile_';
+const CACHE_DURATION = 20 * 60 * 1000; // 20 minutes (longer than dashboard because author content changes less)
 
+// Get cache key for specific username
+const getAuthorCacheKey = (username) => `${AUTHOR_CACHE_PREFIX}${username}`;
+const getAuthorTimestampKey = (username) => `${AUTHOR_CACHE_PREFIX}${username}_timestamp`;
+const getAuthorRatingsKey = (username) => `${AUTHOR_CACHE_PREFIX}${username}_ratings`;
+
+// Check if cache is valid for this author
+const isAuthorCacheValid = (username) => {
+    try {
+        const timestampKey = getAuthorTimestampKey(username);
+        const timestamp = localStorage.getItem(timestampKey);
+        
+        if (!timestamp) return false;
+        
+        const cacheAge = Date.now() - parseInt(timestamp, 10);
+        return cacheAge < CACHE_DURATION;
+    } catch (error) {
+        console.error('Error checking author cache validity:', error);
+        return false;
+    }
+};
+
+// Get cached author data
+const getAuthorCache = (username) => {
+    try {
+        if (!isAuthorCacheValid(username)) {
+            clearAuthorCache(username);
+            return null;
+        }
+
+        const cacheKey = getAuthorCacheKey(username);
+        const ratingsKey = getAuthorRatingsKey(username);
+        const cachedData = localStorage.getItem(cacheKey);
+        const cachedRatings = localStorage.getItem(ratingsKey);
+
+        if (!cachedData) return null;
+
+        const data = JSON.parse(cachedData);
+        const ratings = cachedRatings ? JSON.parse(cachedRatings) : {};
+
+        return { ...data, ratings };
+    } catch (error) {
+        console.error('Error reading author cache:', error);
+        clearAuthorCache(username);
+        return null;
+    }
+};
+
+// Save author data to cache
+const saveAuthorCache = (username, profile, posts, authorName, avatarUrl, ratings) => {
+    try {
+        const cacheKey = getAuthorCacheKey(username);
+        const timestampKey = getAuthorTimestampKey(username);
+        const ratingsKey = getAuthorRatingsKey(username);
+
+        const dataToCache = {
+            profile,
+            posts,
+            authorName,
+            avatarUrl
+        };
+
+        localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
+        localStorage.setItem(ratingsKey, JSON.stringify(ratings));
+        localStorage.setItem(timestampKey, Date.now().toString());
+    } catch (error) {
+        console.error('Error saving author cache:', error);
+        // If quota exceeded, clear this author's cache and try once more
+        clearAuthorCache(username);
+        try {
+            const cacheKey = getAuthorCacheKey(username);
+            const timestampKey = getAuthorTimestampKey(username);
+            const ratingsKey = getAuthorRatingsKey(username);
+            
+            localStorage.setItem(cacheKey, JSON.stringify({
+                profile, posts, authorName, avatarUrl
+            }));
+            localStorage.setItem(ratingsKey, JSON.stringify(ratings));
+            localStorage.setItem(timestampKey, Date.now().toString());
+        } catch (retryError) {
+            console.error('Failed to save author cache after retry:', retryError);
+        }
+    }
+};
+
+// Clear specific author's cache
+const clearAuthorCache = (username) => {
+    try {
+        localStorage.removeItem(getAuthorCacheKey(username));
+        localStorage.removeItem(getAuthorTimestampKey(username));
+        localStorage.removeItem(getAuthorRatingsKey(username));
+    } catch (error) {
+        console.error('Error clearing author cache:', error);
+    }
+};
+
+// ============================================================
+// 👤 AUTHOR PROFILE COMPONENT
+// ============================================================
 function AuthorProfile() {
     const { username } = useParams();
+    const dispatch = useDispatch();
     
     const [posts, setPosts] = useState([]);
     const [authorProfile, setAuthorProfile] = useState(null);
@@ -15,59 +121,171 @@ function AuthorProfile() {
     const [avatarUrl, setAvatarUrl] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Memoized computed values
+    // ✅ Memoized computed values
     const initials = useMemo(() => 
         authorName.split(' ').map(n => n[0]).join('').toUpperCase() || 'AU',
         [authorName]
     );
 
+    // ✅ Scroll to top when username changes
     useEffect(() => {
-            window.scrollTo(0, 0);
-        }, [username]);
+        window.scrollTo(0, 0);
+    }, [username]);
 
-    const fetchAuthorData = useCallback(async () => {
+    // ✅ OPTIMIZATION: Prefetch ratings for author's posts
+    const prefetchRatings = useCallback(async (postsList) => {
+        try {
+            const ratingsPromises = postsList.map(post => 
+                appwriteService.getPostRatings(post.$id)
+                    .then(data => {
+                        if (data && data.documents.length > 0) {
+                            const total = data.documents.reduce((acc, curr) => acc + curr.stars, 0);
+                            const avg = parseFloat((total / data.documents.length).toFixed(1));
+                            return { postId: post.$id, rating: avg };
+                        }
+                        return null;
+                    })
+                    .catch(() => null)
+            );
+
+            const results = await Promise.all(ratingsPromises);
+            
+            const ratingsMap = {};
+            results.forEach(result => {
+                if (result) {
+                    ratingsMap[result.postId] = result.rating;
+                }
+            });
+
+            dispatch(setMultipleRatings(ratingsMap));
+            return ratingsMap;
+        } catch (error) {
+            console.error("Error prefetching ratings:", error);
+            return {};
+        }
+    }, [dispatch]);
+
+    // ✅ MULTI-LAYER CACHING: localStorage → Database
+    useEffect(() => {
         if (!username) {
             setLoading(false);
             return;
         }
 
-        try {
-            // Fetch profile by username
-            const profileData = await appwriteService.getProfileByUsername(username);
+        let isCancelled = false;
 
-            if (profileData) {
-                setAuthorProfile(profileData);
-                
-                // Set avatar if available
-                if (profileData.ProfileImageFileId) {
-                    setAvatarUrl(appwriteService.getAvatarPreview(profileData.ProfileImageFileId));
+        const fetchAuthorData = async () => {
+            setLoading(true);
+
+            // Layer 1: Check localStorage cache
+            const cachedData = getAuthorCache(username);
+            
+            if (cachedData) {
+                // ✅ USE CACHED DATA (0 database reads!)
+                if (!isCancelled) {
+                    setAuthorProfile(cachedData.profile);
+                    setPosts(cachedData.posts);
+                    setAuthorName(cachedData.authorName);
+                    setAvatarUrl(cachedData.avatarUrl);
+                    
+                    // Dispatch cached ratings to Redux
+                    dispatch(setMultipleRatings(cachedData.ratings));
+                    
+                    setLoading(false);
                 }
-
-                // Fetch author's posts
-                const postsData = await appwriteService.getPosts([
-                    Query.equal("UserId", profileData.UserId),
-                    Query.equal("Status", "active"),
-                    Query.orderDesc("$createdAt")
-                ]);
-
-                if (postsData?.documents?.length > 0) {
-                    setPosts(postsData.documents);
-                    setAuthorName(postsData.documents[0].AuthorName);
-                } else {
-                    setAuthorName(profileData.Username);
-                }
+                return;
             }
 
-        } catch (error) {
-            console.error("Error fetching author data:", error);
-        } finally {
-            setLoading(false);
-        }
-    }, [username]);
+            // Layer 2: Fetch from database (cache miss or expired)
+            try {
+                // Fetch profile by username
+                const profileData = await appwriteService.getProfileByUsername(username);
 
-    useEffect(() => {
+                if (isCancelled) return;
+
+                if (profileData) {
+                    setAuthorProfile(profileData);
+                    
+                    // Set avatar if available
+                    let avatar = null;
+                    if (profileData.ProfileImageFileId) {
+                        avatar = appwriteService.getAvatarPreview(profileData.ProfileImageFileId);
+                        setAvatarUrl(avatar);
+                    }
+
+                    // Fetch author's posts
+                    const postsData = await appwriteService.getPosts([
+                        Query.equal("UserId", profileData.UserId),
+                        Query.equal("Status", "active"),
+                        Query.orderDesc("$createdAt")
+                    ]);
+
+                    if (isCancelled) return;
+
+                    let displayName = profileData.Username;
+                    let authorPosts = [];
+
+                    if (postsData?.documents?.length > 0) {
+                        authorPosts = postsData.documents;
+                        setPosts(authorPosts);
+                        displayName = postsData.documents[0].AuthorName;
+                        setAuthorName(displayName);
+                    } else {
+                        setAuthorName(displayName);
+                    }
+
+                    // Fetch ratings for all posts
+                    const ratingsMap = await prefetchRatings(authorPosts);
+
+                    if (isCancelled) return;
+
+                    // ✅ SAVE TO LOCALSTORAGE CACHE
+                    saveAuthorCache(
+                        username,
+                        profileData,
+                        authorPosts,
+                        displayName,
+                        avatar,
+                        ratingsMap
+                    );
+                }
+
+            } catch (error) {
+                if (!isCancelled) {
+                    console.error("Error fetching author data:", error);
+                    
+                    // Try to use stale cache on error
+                    try {
+                        const staleCache = localStorage.getItem(getAuthorCacheKey(username));
+                        const staleRatings = localStorage.getItem(getAuthorRatingsKey(username));
+                        
+                        if (staleCache) {
+                            const staleData = JSON.parse(staleCache);
+                            const staleRatingsData = staleRatings ? JSON.parse(staleRatings) : {};
+                            
+                            setAuthorProfile(staleData.profile);
+                            setPosts(staleData.posts);
+                            setAuthorName(staleData.authorName);
+                            setAvatarUrl(staleData.avatarUrl);
+                            dispatch(setMultipleRatings(staleRatingsData));
+                        }
+                    } catch (cacheError) {
+                        console.error('Failed to use stale cache:', cacheError);
+                    }
+                }
+            } finally {
+                if (!isCancelled) {
+                    setLoading(false);
+                }
+            }
+        };
+
         fetchAuthorData();
-    }, [fetchAuthorData]);
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [username, dispatch, prefetchRatings]);
 
     // Skeleton loading screen
     if (loading) {
@@ -166,13 +384,25 @@ function AuthorProfile() {
                     <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Latest Articles</h2>
                 </div>
                 
-                <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6'>
-                    {posts.map((post) => (
-                        <div key={post.$id}>
-                            <PostCard {...post} />
+                {posts.length > 0 ? (
+                    <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6'>
+                        {posts.map((post) => (
+                            <div key={post.$id}>
+                                <PostCard {...post} />
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="gpu-accelerate bg-white rounded-xl p-8 sm:p-12 text-center border-2 border-slate-100 border-dashed">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-50 rounded-full flex items-center justify-center mb-3 sm:mb-4 text-slate-300 mx-auto">
+                            <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
                         </div>
-                    ))}
-                </div>
+                        <h3 className="text-base sm:text-lg font-bold text-slate-800 mb-1">No Published Articles</h3>
+                        <p className="text-sm sm:text-base text-slate-500">This author hasn't published any articles yet.</p>
+                    </div>
+                )}
 
             </Container>
         </div>

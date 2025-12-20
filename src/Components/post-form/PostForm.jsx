@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState, useMemo } from 'react';
+import React, { useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { createPortal } from 'react-dom';
 import { Button, Input, Select, RTE } from '../index.js';
@@ -12,6 +12,21 @@ import { addUserPost, updateUserPost } from '../../Store/dashboardSlice';
 import { updateTrendingPost } from '../../Store/homeSlice';
 import ImageCropper from '../ImageCropper.jsx';
 import { EditorLoader } from '../Skeletons.jsx';
+
+// ✅ PERFECT DEBOUNCE: With cleanup capability
+const debounce = (func, delay) => {
+    let timeoutId;
+    
+    const debouncedFn = (...args) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func(...args), delay);
+    };
+    
+    // ✅ Expose cleanup function
+    debouncedFn.cancel = () => clearTimeout(timeoutId);
+    
+    return debouncedFn;
+};
 
 function PostForm({ post }) {
     const { register, handleSubmit, watch, setValue, control, getValues, reset } = useForm({
@@ -29,10 +44,7 @@ function PostForm({ post }) {
 
     const [error, setError] = useState("");
     const [submitting, setSubmitting] = useState(false);
-    
-    // 🚨 INSTANT LOADER: Start true so it appears immediately
     const [isInitializing, setIsInitializing] = useState(true);
-    
     const [previewUrl, setPreviewUrl] = useState(post ? appwriteService.getFileView(post.featuredImage) : null);
     const [selectedFile, setSelectedFile] = useState(null);
 
@@ -40,115 +52,172 @@ function PostForm({ post }) {
     const [isCropperOpen, setIsCropperOpen] = useState(false);
     const [tempImage, setTempImage] = useState(null);
 
+    // Refs
+    const fileReaderRef = useRef(null);
+    const isMountedRef = useRef(true);
+    const prevPreviewUrlRef = useRef(null);
+
     const isLoading = useMemo(() => isInitializing || submitting, [isInitializing, submitting]);
     const isEditMode = useMemo(() => !!post, [post]);
 
-    // Initialize component (With Minimum "Premium" Wait Time)
+    // Mount/unmount tracking
     useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
+    // ✅ OPTIMIZED: No artificial delay
+    useEffect(() => {
+        let isCancelled = false;
+        
         const init = async () => {
-            const tasks = [];
-
-            // 1. 🚨 OPTIMIZED WAIT TIME: 
-            // Reduced to 300ms. Fast enough to feel "instant", 
-            // but long enough to show the nice animation without flickering.
-            tasks.push(new Promise(resolve => setTimeout(resolve, 300)));
-
-            // 2. Preload Image (if exists)
             if (post?.featuredImage) {
                 const img = new Image();
                 img.src = appwriteService.getFileView(post.featuredImage);
-                tasks.push(new Promise((resolve) => {
+                await new Promise((resolve) => {
                     img.onload = resolve;
-                    img.onerror = resolve; // Proceed even if image fails
-                }));
+                    img.onerror = resolve;
+                });
             }
-
-            // Wait for both time + image
-            await Promise.all(tasks);
-            setIsInitializing(false);
+            
+            if (!isCancelled && isMountedRef.current) {
+                setIsInitializing(false);
+            }
         };
+        
         init();
+
+        return () => {
+            isCancelled = true;
+        };
     }, [post]);
 
     // Lock scroll when loading
     useEffect(() => {
-        if (isLoading) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
+        document.body.style.overflow = isLoading ? 'hidden' : 'unset';
         return () => { document.body.style.overflow = 'unset'; };
     }, [isLoading]);
 
-    // Restore draft logic
+    // ✅ Better draft restoration
     useEffect(() => {
         if (!post) {
             const savedDraft = localStorage.getItem("blog-post-draft");
             if (savedDraft) {
                 try {
                     const parsedDraft = JSON.parse(savedDraft);
-                    reset({
-                        title: parsedDraft.title || "",
-                        slug: parsedDraft.slug || "",
-                        content: parsedDraft.content || "",
-                        status: parsedDraft.status || "active",
-                    });
+                    if (parsedDraft.title || parsedDraft.content) {
+                        reset({
+                            title: parsedDraft.title || "",
+                            slug: parsedDraft.slug || "",
+                            content: parsedDraft.content || "",
+                            status: parsedDraft.status || "active",
+                        });
+                    }
                 } catch (error) {
-                    console.error("Error parsing draft:", error);
+                    console.error("Failed to restore draft:", error);
+                    localStorage.removeItem("blog-post-draft");
                 }
             }
         }
     }, [post, reset]);
 
-    // Save draft logic
+    // ✅ PERFECT: Debounced draft saving with cleanup
     useEffect(() => {
         if (!post) {
-            const subscription = watch((value) => {
-                localStorage.setItem("blog-post-draft", JSON.stringify(value));
-            });
-            return () => subscription.unsubscribe();
+            const debouncedSave = debounce((value) => {
+                try {
+                    localStorage.setItem("blog-post-draft", JSON.stringify(value));
+                } catch (error) {
+                    console.error("Failed to save draft:", error);
+                }
+            }, 1000);
+
+            const subscription = watch(debouncedSave);
+            
+            return () => {
+                subscription.unsubscribe();
+                debouncedSave.cancel(); // ✅ Clear pending timeout
+            };
         }
     }, [watch, post]);
 
+    // ✅ FileReader with cleanup
     const handleFileChange = useCallback((e) => {
         if (e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
             
-            // Validation: Size 10MB
             if (file.size > 10 * 1024 * 1024) {
                 setError("File size too large. Please upload an image under 10MB.");
                 e.target.value = null; 
                 return;
             }
 
-            // Validation: Type
             if (!file.type.startsWith("image/")) {
                 setError("Invalid file type. Please upload a valid image (JPG, PNG, WebP).");
                 e.target.value = null;
                 return;
             }
 
+            if (fileReaderRef.current) {
+                fileReaderRef.current.abort();
+            }
+
             const reader = new FileReader();
-            reader.readAsDataURL(file);
+            fileReaderRef.current = reader;
+
             reader.onload = () => {
-                setTempImage(reader.result);
-                setIsCropperOpen(true);
+                if (isMountedRef.current) {
+                    setTempImage(reader.result);
+                    setIsCropperOpen(true);
+                }
+                fileReaderRef.current = null;
             };
-            e.target.value = null; 
+
+            reader.onerror = () => {
+                if (isMountedRef.current) {
+                    setError("Failed to read image file.");
+                }
+                fileReaderRef.current = null;
+            };
+
+            reader.readAsDataURL(file);
+            e.target.value = null;
         }
     }, []);
 
+    useEffect(() => {
+        return () => {
+            if (fileReaderRef.current) {
+                fileReaderRef.current.abort();
+            }
+        };
+    }, []);
+
+    // ✅ Cleanup old preview URL
     const handleCropDone = useCallback(async (croppedBlob) => {
         setIsCropperOpen(false);
         try {
             const file = new File([croppedBlob], "cropped-image.jpg", { type: "image/jpeg" });
             const compressed = await compressImage(file, 'post', getValues('title') || 'post', userData.name);
             
-            setSelectedFile(compressed);
-            setPreviewUrl(URL.createObjectURL(compressed));
+            if (isMountedRef.current) {
+                if (prevPreviewUrlRef.current && prevPreviewUrlRef.current.startsWith('blob:')) {
+                    URL.revokeObjectURL(prevPreviewUrlRef.current);
+                }
+                
+                const newPreviewUrl = URL.createObjectURL(compressed);
+                prevPreviewUrlRef.current = newPreviewUrl;
+                
+                setSelectedFile(compressed);
+                setPreviewUrl(newPreviewUrl);
+            }
         } catch (error) {
             console.error("Image processing failed:", error);
-            setError("Failed to process image.");
+            if (isMountedRef.current) {
+                setError("Failed to process image.");
+            }
         }
     }, [getValues, userData]);
 
@@ -159,68 +228,97 @@ function PostForm({ post }) {
         return '';
     }, []);
 
+    // ✅ Helper: File upload
+    const handleFileUpload = useCallback(async () => {
+        if (!selectedFile) return null;
+        
+        const file = await appwriteService.uploadFile(selectedFile);
+        if (!isMountedRef.current) return null;
+        
+        if (file && post?.featuredImage) {
+            await appwriteService.deleteFile(post.featuredImage);
+            if (!isMountedRef.current) return null;
+        }
+        
+        return file?.$id || null;
+    }, [selectedFile, post]);
+
+    // ✅ Helper: Create new post
+    const createNewPost = useCallback(async (data, fileId) => {
+        if (!fileId) throw new Error("⚠️ Please upload a featured image!");
+
+        const dbPost = await appwriteService.createPost({
+            ...data,
+            featuredImage: fileId,
+            userId: userData.$id,
+            AuthorName: userData.name || 'Guest Author',
+        });
+        
+        if (!isMountedRef.current) return;
+        
+        if (dbPost) {
+            if (dbPost.Status === 'active') {
+                dispatch(addPost(dbPost));
+            }
+            dispatch(addUserPost(dbPost));
+            localStorage.removeItem("blog-post-draft");
+            navigate(`/post/${dbPost.$id}`);
+        }
+    }, [userData, dispatch, navigate]);
+
+    // ✅ Helper: Update existing post
+    const updateExistingPost = useCallback(async (data, fileId) => {
+        const dbPost = await appwriteService.updatePost(post.$id, {
+            ...data,
+            featuredImage: fileId || undefined, 
+        });
+        
+        if (!isMountedRef.current) return;
+        
+        if (dbPost) {
+            if (dbPost.Status === 'active') {
+                dispatch(updatePost(dbPost));
+                dispatch(updateTrendingPost(dbPost));
+            }
+            dispatch(updateUserPost(dbPost));
+            localStorage.removeItem("blog-post-draft");
+            navigate(`/post/${dbPost.$id}`);
+        }
+    }, [post, dispatch, navigate]);
+
+    // ✅ Main submit function
     const submit = useCallback(async (data) => {
+        if (!isMountedRef.current) return;
+        
         setError("");
         setSubmitting(true);
 
         try {
             if (data.status) data.status = data.status.toLowerCase();
-            let fileId = post ? undefined : null;
             
-            if (selectedFile) {
-                const file = await appwriteService.uploadFile(selectedFile);
-                if (file) {
-                    fileId = file.$id;
-                    if (post?.featuredImage) {
-                        await appwriteService.deleteFile(post.featuredImage);
-                    }
-                }
-            }
+            const fileId = await handleFileUpload();
+            if (!isMountedRef.current) return;
 
             if (post) {
-                const dbPost = await appwriteService.updatePost(post.$id, {
-                    ...data,
-                    featuredImage: fileId || undefined, 
-                });
-                
-                if (dbPost) {
-                    if (dbPost.Status === 'active') {
-                        dispatch(updatePost(dbPost));
-                        dispatch(updateTrendingPost(dbPost));
-                    }
-                    dispatch(updateUserPost(dbPost));
-                    localStorage.removeItem("blog-post-draft");
-                    navigate(`/post/${dbPost.$id}`);
-                }
+                await updateExistingPost(data, fileId);
             } else {
-                if (!fileId) throw new Error("⚠️ Please upload a featured image!");
-
-                data.featuredImage = fileId;
-                const dbPost = await appwriteService.createPost({
-                    ...data,
-                    userId: userData.$id,
-                    AuthorName: userData.name || 'Guest Author',
-                });
-                
-                if (dbPost) {
-                    if (dbPost.Status === 'active') {
-                        dispatch(addPost(dbPost));
-                    }
-                    dispatch(addUserPost(dbPost));
-                    localStorage.removeItem("blog-post-draft");
-                    navigate(`/post/${dbPost.$id}`);
-                }
+                await createNewPost(data, fileId);
             }
 
         } catch (error) {
+            if (!isMountedRef.current) return;
+            
             console.error("PostForm Error:", error);
             setError(parseErrorMessage(error));
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
-            setSubmitting(false);
+            if (isMountedRef.current) {
+                setSubmitting(false);
+            }
         }
-    }, [post, selectedFile, userData, dispatch, navigate]);
+    }, [post, handleFileUpload, updateExistingPost, createNewPost]);
 
+    // Auto-generate slug from title
     useEffect(() => {
         const subscription = watch((value, { name }) => {
             if (name === 'title') {
@@ -230,9 +328,14 @@ function PostForm({ post }) {
         return () => subscription.unsubscribe();
     }, [watch, slugTransform, setValue]);
 
+    // Auto-clear error after 6 seconds
     useEffect(() => {
         if (error) {
-            const timer = setTimeout(() => setError(""), 6000);
+            const timer = setTimeout(() => {
+                if (isMountedRef.current) {
+                    setError("");
+                }
+            }, 6000);
             return () => clearTimeout(timer);
         }
     }, [error]);
@@ -240,6 +343,18 @@ function PostForm({ post }) {
     const handleSlugInput = useCallback((e) => {
         setValue('slug', slugTransform(e.currentTarget.value), { shouldValidate: true });
     }, [setValue, slugTransform]);
+
+    // ✅ Cleanup all preview URLs on unmount
+    useEffect(() => {
+        return () => {
+            if (prevPreviewUrlRef.current && prevPreviewUrlRef.current.startsWith('blob:')) {
+                URL.revokeObjectURL(prevPreviewUrlRef.current);
+            }
+            if (previewUrl && previewUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(previewUrl);
+            }
+        };
+    }, []);
 
     return (
         <>
@@ -255,7 +370,6 @@ function PostForm({ post }) {
                 />
             )}
 
-            {/* 🚨 MODERN SAAS LOADER */}
             {isLoading && createPortal(
                 EditorLoader(),
                 document.body
@@ -263,7 +377,6 @@ function PostForm({ post }) {
 
             <form onSubmit={handleSubmit(submit)} className="flex flex-col lg:grid lg:grid-cols-3 gap-8 relative lg:items-start">
                 
-                {/* Error notification */}
                 {error && (
                     <div className='fixed top-20 left-1/2 transform -translate-x-1/2 z-40 w-full max-w-sm px-4 pointer-events-none'>
                         <div className='bg-rose-600 text-white px-6 py-4 rounded-xl shadow-2xl border border-rose-500 animate-bounce flex items-center gap-4'>

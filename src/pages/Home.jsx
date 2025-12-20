@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import appwriteService from '../appwrite/config.js';
 import { Container, Button } from '../Components';
 import { useSelector, useDispatch } from 'react-redux';
@@ -8,8 +8,87 @@ import { setMultipleRatings } from '../Store/ratingSlice';
 import { Link } from 'react-router-dom';
 import { HomeSkeleton } from '../Components/Skeletons.jsx';
 
-// Memoized trending card component
-const TrendingCard = memo(({ post, onClick }) => {
+
+// ============================================================
+// 🗄️ LOCALSTORAGE CACHE UTILITIES
+// ============================================================
+const CACHE_KEYS = {
+    TRENDING_POSTS: 'trending_posts_cache',
+    TRENDING_RATINGS: 'trending_ratings_cache',
+    CACHE_TIMESTAMP: 'trending_cache_timestamp'
+};
+
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+const isCacheValid = () => {
+    try {
+        const timestamp = localStorage.getItem(CACHE_KEYS.CACHE_TIMESTAMP);
+        if (!timestamp) return false;
+        
+        const cacheAge = Date.now() - parseInt(timestamp, 10);
+        return cacheAge < CACHE_DURATION;
+    } catch (error) {
+        console.error('Error checking cache validity:', error);
+        return false;
+    }
+};
+
+const getCachedTrendingData = () => {
+    try {
+        if (!isCacheValid()) {
+            clearTrendingCache();
+            return null;
+        }
+
+        const postsData = localStorage.getItem(CACHE_KEYS.TRENDING_POSTS);
+        const ratingsData = localStorage.getItem(CACHE_KEYS.TRENDING_RATINGS);
+
+        if (!postsData) return null;
+
+        return {
+            posts: JSON.parse(postsData),
+            ratings: ratingsData ? JSON.parse(ratingsData) : {}
+        };
+    } catch (error) {
+        console.error('Error reading cache:', error);
+        clearTrendingCache();
+        return null;
+    }
+};
+
+const saveTrendingCache = (posts, ratings) => {
+    try {
+        localStorage.setItem(CACHE_KEYS.TRENDING_POSTS, JSON.stringify(posts));
+        localStorage.setItem(CACHE_KEYS.TRENDING_RATINGS, JSON.stringify(ratings));
+        localStorage.setItem(CACHE_KEYS.CACHE_TIMESTAMP, Date.now().toString());
+    } catch (error) {
+        console.error('Error saving cache:', error);
+        clearTrendingCache();
+        try {
+            localStorage.setItem(CACHE_KEYS.TRENDING_POSTS, JSON.stringify(posts));
+            localStorage.setItem(CACHE_KEYS.TRENDING_RATINGS, JSON.stringify(ratings));
+            localStorage.setItem(CACHE_KEYS.CACHE_TIMESTAMP, Date.now().toString());
+        } catch (retryError) {
+            console.error('Failed to save cache after retry:', retryError);
+        }
+    }
+};
+
+const clearTrendingCache = () => {
+    try {
+        localStorage.removeItem(CACHE_KEYS.TRENDING_POSTS);
+        localStorage.removeItem(CACHE_KEYS.TRENDING_RATINGS);
+        localStorage.removeItem(CACHE_KEYS.CACHE_TIMESTAMP);
+    } catch (error) {
+        console.error('Error clearing cache:', error);
+    }
+};
+
+
+// ============================================================
+// 🎨 MEMOIZED TRENDING CARD COMPONENT
+// ============================================================
+const TrendingCard = React.memo(({ post, onClick }) => {
     const cachedRating = useSelector((state) => state.ratings?.postRatings?.[post.$id]);
     const rating = cachedRating || null;
 
@@ -43,94 +122,145 @@ const TrendingCard = memo(({ post, onClick }) => {
             </div>
         </div>
     );
+}, (prevProps, nextProps) => {
+    return prevProps.post.$id === nextProps.post.$id && 
+           prevProps.onClick === nextProps.onClick;
 });
 
 TrendingCard.displayName = 'TrendingCard';
 
+
+// ============================================================
+// 🏠 HOME COMPONENT
+// ============================================================
 function Home() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const authStatus = useSelector((state) => state.auth.status);
     const trending = useSelector((state) => state.home.trendingPosts);
     
-    const [posts, setPosts] = useState([]);
-    const [loading, setLoading] = useState(trending.length === 0);
+    // ✅ FIX 1: Removed unused 'posts' state
+    const [loading, setLoading] = useState(false);
+    
+    const isMountedRef = useRef(true);
+    const hasFetchedRef = useRef(false);
 
+    // ✅ Create infinite scroll effect
     const carouselItems = useMemo(() => {
         if (trending.length === 0) return [];
         return Array(6).fill(trending).flat();
     }, [trending]);
 
-    // Fetch trending posts if not cached
+    // ✅ Optimized fetch - only trending posts
     useEffect(() => {
-        if (trending.length === 0) {
+        isMountedRef.current = true;
+
+        if (hasFetchedRef.current) {
+            return;
+        }
+
+        const initializeData = async () => {
             setLoading(true);
 
-            const fetchData = async () => {
-                try {
-                    const minWait = new Promise(resolve => setTimeout(resolve, 2000));
+            // Check cache
+            const cachedData = getCachedTrendingData();
+            
+            if (cachedData && cachedData.posts.length > 0) {
+                if (isMountedRef.current) {
+                    dispatch(setTrendingPosts(cachedData.posts));
+                    dispatch(setMultipleRatings(cachedData.ratings));
+                    setLoading(false);
+                    hasFetchedRef.current = true;
+                }
+                return;
+            }
+
+            
+            try {
+                const trendingResponse = await appwriteService.getTrendingPosts(6);
+
+                if (!isMountedRef.current) return;
+
+                if (trendingResponse && trendingResponse.length > 0) {
+                    // Fetch ratings
+                    const ratingsPromises = trendingResponse.map(post => 
+                        appwriteService.getPostRatings(post.$id)
+                            .then(data => {
+                                if (data && data.documents.length > 0) {
+                                    const total = data.documents.reduce((acc, curr) => acc + curr.stars, 0);
+                                    const avg = parseFloat((total / data.documents.length).toFixed(1));
+                                    return { postId: post.$id, rating: avg };
+                                }
+                                return null;
+                            })
+                            .catch(() => null)
+                    );
+
+                    const results = await Promise.all(ratingsPromises);
                     
-                    const dataFetch = Promise.all([
-                        appwriteService.getPosts(),
-                        appwriteService.getTrendingPosts()
-                    ]);
+                    if (!isMountedRef.current) return;
 
-                    const [[postsResponse, trendingResponse]] = await Promise.all([dataFetch, minWait]);
+                    const ratingsMap = {};
+                    results.forEach(result => {
+                        if (result) {
+                            ratingsMap[result.postId] = result.rating;
+                        }
+                    });
 
-                    if (postsResponse?.documents) {
-                        setPosts(postsResponse.documents);
-                    }
+                    // Save to cache
+                    saveTrendingCache(trendingResponse, ratingsMap);
 
-                    if (trendingResponse?.length > 0) {
-                        // ✅ FETCH RATINGS FIRST (don't dispatch posts yet!)
-                        const ratingsPromises = trendingResponse.map(post => 
-                            appwriteService.getPostRatings(post.$id)
-                                .then(data => {
-                                    if (data && data.documents.length > 0) {
-                                        const total = data.documents.reduce((acc, curr) => acc + curr.stars, 0);
-                                        const avg = parseFloat((total / data.documents.length).toFixed(1));
-                                        return { postId: post.$id, rating: avg };
-                                    }
-                                    return null;
-                                })
-                                .catch(() => null)
-                        );
-
-                        const results = await Promise.all(ratingsPromises);
-                        
-                        const ratingsMap = {};
-                        results.forEach(result => {
-                            if (result) {
-                                ratingsMap[result.postId] = result.rating;
-                            }
-                        });
-
-                        // ✅ DISPATCH BOTH AT THE SAME TIME (single render!)
-                        dispatch(setMultipleRatings(ratingsMap));
-                        dispatch(setTrendingPosts(trendingResponse));
-                    } else {
+                    // Dispatch to Redux
+                    dispatch(setMultipleRatings(ratingsMap));
+                    dispatch(setTrendingPosts(trendingResponse));
+                } else {
+                    if (isMountedRef.current) {
                         dispatch(setTrendingPosts([]));
                     }
+                }
 
-                } catch (error) {
-                    console.error("Error fetching home data:", error);
-                } finally {
-                    // ✅ HIDE LOADING AFTER EVERYTHING IS READY
+                hasFetchedRef.current = true;
+
+            } catch (error) {
+                if (!isMountedRef.current) return;
+                
+                console.error("Error fetching home data:", error);
+                
+                // Try stale cache
+                try {
+                    const staleCacheData = localStorage.getItem(CACHE_KEYS.TRENDING_POSTS);
+                    const staleRatingsData = localStorage.getItem(CACHE_KEYS.TRENDING_RATINGS);
+                    
+                    if (staleCacheData) {
+                        const stalePosts = JSON.parse(staleCacheData);
+                        const staleRatings = staleRatingsData ? JSON.parse(staleRatingsData) : {};
+                        
+                        dispatch(setTrendingPosts(stalePosts));
+                        dispatch(setMultipleRatings(staleRatings));
+                    }
+                } catch (cacheError) {
+                    console.error('Failed to use stale cache:', cacheError);
+                }
+            } finally {
+                if (isMountedRef.current) {
                     setLoading(false);
                 }
-            };
+            }
+        };
 
-            fetchData();
-        } else {
-            setLoading(false);
-        }
-    }, [trending.length, dispatch]);
+        initializeData();
 
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, [dispatch]);
+
+    
     const handleCardClick = useCallback((e, postId) => {
         e.preventDefault();
         e.stopPropagation();
-        navigate(authStatus ? `/post/${postId}` : '/login');
-    }, [authStatus, navigate]);
+        navigate(`/post/${postId}`);
+    }, [navigate]);
 
     if (loading) {
         return <HomeSkeleton />;
@@ -185,32 +315,25 @@ function Home() {
 
                     {/* CTA buttons */}
                     <div className="flex flex-col sm:flex-row gap-4 relative z-20 mt-4">
+
+                        <Link to="/all-posts">
+                            <Button className="px-8! py-3! text-lg! bg-slate-900 hover:bg-slate-800 text-white shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
+                                Explore All Posts
+                            </Button>
+                        </Link>
+
                         {authStatus ? (
-                            <>
-                                <Link to="/all-posts">
-                                    <Button className="px-8! py-3! text-lg! bg-slate-900 hover:bg-slate-800 text-white shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
-                                        Explore All Posts
-                                    </Button>
-                                </Link>
-                                <Link to="/add-post">
-                                    <Button className="px-8! py-3! text-lg! bg-white text-slate-900! border border-slate-200 hover:bg-slate-50 shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
-                                        Write a Story
-                                    </Button>
-                                </Link>
-                            </>
+                            <Link to="/add-post">
+                                <Button className="px-8! py-3! text-lg! bg-white text-slate-900! border border-slate-200 hover:bg-slate-50 shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
+                                    Write a Story
+                                </Button>
+                            </Link>
                         ) : (
-                            <>
-                                <Link to="/login">
-                                    <Button className="px-8! py-3! text-lg! bg-slate-900 hover:bg-slate-800 text-white shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
-                                        Start Reading
-                                    </Button>
-                                </Link>
-                                <Link to="/signup">
-                                    <Button className="px-8! py-3! text-lg! bg-white text-slate-900! border border-slate-200 hover:bg-slate-50 shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
-                                        Create Account
-                                    </Button>
-                                </Link>
-                            </>
+                            <Link to="/signup">
+                                <Button className="px-8! py-3! text-lg! bg-white text-slate-900! border border-slate-200 hover:bg-slate-50 shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
+                                    Create Account
+                                </Button>
+                            </Link>
                         )}
                     </div>
 
@@ -219,5 +342,6 @@ function Home() {
         </div>
     );
 }
+
 
 export default Home;
