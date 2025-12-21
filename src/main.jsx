@@ -123,6 +123,7 @@ const router = createBrowserRouter([
       {
         path: '/dashboard',
         element: (
+          
           <SuspenseLayout fallback={<DashboardSkeletonSelector />}>
             <Dashboard />
           </SuspenseLayout>
@@ -131,11 +132,10 @@ const router = createBrowserRouter([
       {
         path: '/author/:username',
         element: (
-          <AuthLayout authentication={true}>
+          
           <SuspenseLayout fallback={<AuthorProfileSkeleton />}>
             <AuthorProfile />
           </SuspenseLayout>
-          </AuthLayout>
         ),
       },
       {
