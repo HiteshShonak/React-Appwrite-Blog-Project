@@ -1,6 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-// ✅ Read localStorage BEFORE creating initial state
+
 const getInitialAuthState = () => {
     try {
         const authStatus = localStorage.getItem('authStatus');

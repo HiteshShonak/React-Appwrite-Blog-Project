@@ -25,10 +25,10 @@ const FOOTER_SECTIONS = [
   {
     title: "Stay in touch",
     links: [
-      { label: "Newsletter", to: "https://example.com/newsletter", isExternal: true },
-      { label: "Twitter", to: "https://twitter.com", isExternal: true },
-      { label: "Instagram", to: "https://instagram.com", isExternal: true },
-      { label: "LinkedIn", to: "https://linkedin.com", isExternal: true }
+      { label: "Github", to: "https://github.com/HiteshShonak", isExternal: true },
+      { label: "Twitter", to: "https://x.com/Hitesh_Shonak", isExternal: true },
+      { label: "Instagram", to: "https://instagraayeeHiteshhm.com/", isExternal: true },
+      { label: "LinkedIn", to: "https://www.linkedin.com/in/hiteshshonak/", isExternal: true }
     ]
   }
 ];
