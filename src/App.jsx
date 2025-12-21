@@ -6,16 +6,13 @@ import authService from './appwrite/auth.js'
 import { login, logout } from './Store/authSlice.js'
 import { GlobalSplash } from './Components/Skeletons.jsx'
 
-
 function App() {
   const [loading, setLoading] = useState(true)
   const dispatch = useDispatch()
   const authStatus = useSelector((state) => state.auth.status)
 
   useEffect(() => {
-    // ✅ Redux already loaded from localStorage via authSlice initialState
-    // Only need to validate session with backend if user appears logged in
-    
+    // ✅ Validate session on app load
     if (authStatus) {
       // User has auth in localStorage, verify with backend
       authService.getCurrentUser()
@@ -23,20 +20,28 @@ function App() {
           if (userData) {
             dispatch(login({ userData }));
           } else {
-            // Session expired
+            // Session expired - clean up
             dispatch(logout());
+            // ✅ NEW: Clean up zombie sessions
+            authService.logout().catch(() => {
+              console.log("No sessions to clean");
+            });
           }
         })
         .catch((error) => {
           console.error('Auth validation failed:', error);
           dispatch(logout());
+          // ✅ NEW: Clean up zombie sessions
+          authService.logout().catch(() => {
+            console.log("No sessions to clean");
+          });
         })
         .finally(() => setLoading(false));
     } else {
       // Not logged in, skip backend check
       setLoading(false);
     }
-  }, []) // ✅ Only run once on mount
+  }, []); // Only run once on mount
 
   if (loading) {
     return <GlobalSplash />; 

@@ -116,7 +116,7 @@ const LogoutBtn = memo(({ className = "" }) => {
                 console.error('Failed to clear localStorage:', error);
             }
             
-            navigate('/'); 
+            navigate('/dashboard'); 
         } catch (error) {
             console.error("Logout failed:", error);
             if (isMountedRef.current) {
