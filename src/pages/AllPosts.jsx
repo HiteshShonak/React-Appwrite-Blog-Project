@@ -6,83 +6,9 @@ import { setPosts } from '../Store/postSlice';
 import { setMultipleRatings } from '../Store/ratingSlice';
 import { AllPostsSkeleton } from '../Components/Skeletons.jsx';
 
-// ============================================================
-// 🗄️ LOCALSTORAGE CACHE UTILITIES
-// ============================================================
-const CACHE_KEYS = {
-    ALL_POSTS: 'all_posts_cache',
-    ALL_RATINGS: 'all_posts_ratings_cache',
-    CACHE_TIMESTAMP: 'all_posts_cache_timestamp'
-};
-
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
-
-const isCacheValid = () => {
-    try {
-        const timestamp = localStorage.getItem(CACHE_KEYS.CACHE_TIMESTAMP);
-        if (!timestamp) return false;
-        
-        const cacheAge = Date.now() - parseInt(timestamp, 10);
-        return cacheAge < CACHE_DURATION;
-    } catch (error) {
-        console.error('Error checking cache validity:', error);
-        return false;
-    }
-};
-
-const getCachedData = () => {
-    try {
-        if (!isCacheValid()) {
-            clearCache();
-            return null;
-        }
-
-        const postsData = localStorage.getItem(CACHE_KEYS.ALL_POSTS);
-        const ratingsData = localStorage.getItem(CACHE_KEYS.ALL_RATINGS);
-
-        if (!postsData) return null;
-
-        return {
-            posts: JSON.parse(postsData),
-            ratings: ratingsData ? JSON.parse(ratingsData) : {}
-        };
-    } catch (error) {
-        console.error('Error reading cache:', error);
-        clearCache();
-        return null;
-    }
-};
-
-const saveCacheData = (posts, ratings) => {
-    try {
-        localStorage.setItem(CACHE_KEYS.ALL_POSTS, JSON.stringify(posts));
-        localStorage.setItem(CACHE_KEYS.ALL_RATINGS, JSON.stringify(ratings));
-        localStorage.setItem(CACHE_KEYS.CACHE_TIMESTAMP, Date.now().toString());
-    } catch (error) {
-        console.error('Error saving cache:', error);
-        clearCache();
-        try {
-            localStorage.setItem(CACHE_KEYS.ALL_POSTS, JSON.stringify(posts));
-            localStorage.setItem(CACHE_KEYS.ALL_RATINGS, JSON.stringify(ratings));
-            localStorage.setItem(CACHE_KEYS.CACHE_TIMESTAMP, Date.now().toString());
-        } catch (retryError) {
-            console.error('Failed to save cache after retry:', retryError);
-        }
-    }
-};
-
-const clearCache = () => {
-    try {
-        Object.values(CACHE_KEYS).forEach(key => {
-            localStorage.removeItem(key);
-        });
-    } catch (error) {
-        console.error('Error clearing cache:', error);
-    }
-};
-
 function AllPosts() {
     const posts = useSelector((state) => state.posts.posts);
+    const cachedRatings = useSelector((state) => state.ratings.postRatings);
     const dispatch = useDispatch();
 
     const [loading, setLoading] = useState(false);
@@ -91,21 +17,34 @@ function AllPosts() {
 
     const postCount = posts.length;
 
-    // ✅ PERFECT: Prefetch ratings with guard clause
+    // Prefetch ratings - Updated to return { average, count } object
     const prefetchRatings = useCallback(async (postsList) => {
-        // ✅ GEMINI'S FIX: Guard clause for empty arrays
         if (!postsList || postsList.length === 0) return {};
-        
         if (!isMountedRef.current) return {};
         
         try {
-            const ratingsPromises = postsList.map(post => 
+            // Filter posts that don't have ratings in Redux cache
+            const postsNeedingRatings = postsList.filter(post => cachedRatings[post.$id] === undefined);
+            
+            // If all ratings are cached, return cached data
+            if (postsNeedingRatings.length === 0) {
+                return cachedRatings;
+            }
+            
+            // Fetch only missing ratings
+            const ratingsPromises = postsNeedingRatings.map(post => 
                 appwriteService.getPostRatings(post.$id)
                     .then(data => {
                         if (data && data.documents.length > 0) {
                             const total = data.documents.reduce((acc, curr) => acc + curr.stars, 0);
                             const avg = parseFloat((total / data.documents.length).toFixed(1));
-                            return { postId: post.$id, rating: avg };
+                            const count = data.documents.length;
+                            
+                            // ✅ FIX: Store as Object { average, count }
+                            return { 
+                                postId: post.$id, 
+                                rating: { average: avg, count: count } 
+                            };
                         }
                         return null;
                     })
@@ -116,26 +55,27 @@ function AllPosts() {
             
             if (!isMountedRef.current) return {};
             
-            const ratingsMap = {};
+            const newRatingsMap = {};
             results.forEach(result => {
                 if (result) {
-                    ratingsMap[result.postId] = result.rating;
+                    newRatingsMap[result.postId] = result.rating;
                 }
             });
 
-            // ✅ Only dispatch if we have ratings
-            if (Object.keys(ratingsMap).length > 0) {
-                dispatch(setMultipleRatings(ratingsMap));
+            // Dispatch only newly fetched ratings
+            if (Object.keys(newRatingsMap).length > 0) {
+                dispatch(setMultipleRatings(newRatingsMap));
             }
             
-            return ratingsMap;
+            return { ...cachedRatings, ...newRatingsMap };
         } catch (error) {
             console.error("Error prefetching ratings:", error);
-            return {};
+            return cachedRatings;
         }
-    }, [dispatch]);
+    }, [dispatch, cachedRatings]);
 
-    // ✅ Multi-layer caching: Redux → localStorage → Database
+    // Simplified Caching: Redux (Layer 1) -> Database (Layer 2)
+    // ❌ Removed localStorage Layer to ensure new posts appear immediately
     useEffect(() => {
         isMountedRef.current = true;
 
@@ -144,33 +84,17 @@ function AllPosts() {
         }
 
         const fetchData = async () => {
-            // Layer 1: Check Redux cache
+            // Layer 1: Check Redux cache (Fast load for navigation)
             if (posts.length > 0) {
                 hasFetchedRef.current = true;
+                // We return here to rely on Redux state. 
+                // If you want to force refresh every time, remove this return.
                 return;
             }
 
             setLoading(true);
 
-            // Layer 2: Check localStorage cache
-            const cachedData = getCachedData();
-            
-            if (cachedData && cachedData.posts.length > 0) {
-                if (isMountedRef.current) {
-                    dispatch(setPosts(cachedData.posts));
-                    
-                    // ✅ Only dispatch ratings if we have any
-                    if (Object.keys(cachedData.ratings).length > 0) {
-                        dispatch(setMultipleRatings(cachedData.ratings));
-                    }
-                    
-                    setLoading(false);
-                    hasFetchedRef.current = true;
-                }
-                return;
-            }
-
-            // Layer 3: Fetch from database
+            // Layer 2: Fetch from database (Fresh data)
             try {
                 const response = await appwriteService.getPosts();
                 
@@ -178,40 +102,15 @@ function AllPosts() {
                 
                 if (response?.documents) {
                     const allPosts = response.documents;
-                    const ratingsMap = await prefetchRatings(allPosts);
+                    await prefetchRatings(allPosts);
 
                     if (!isMountedRef.current) return;
 
-                    // ✅ Save to cache
-                    saveCacheData(allPosts, ratingsMap);
-
-                    // ✅ Update Redux
                     dispatch(setPosts(allPosts));
-                    // Ratings already dispatched by prefetchRatings (if any)
-                    
                     hasFetchedRef.current = true;
                 }
             } catch (error) {
                 console.error("Error fetching posts:", error);
-                
-                // Try stale cache on error
-                try {
-                    const staleCacheData = localStorage.getItem(CACHE_KEYS.ALL_POSTS);
-                    const staleRatingsData = localStorage.getItem(CACHE_KEYS.ALL_RATINGS);
-                    
-                    if (staleCacheData) {
-                        const stalePosts = JSON.parse(staleCacheData);
-                        const staleRatings = staleRatingsData ? JSON.parse(staleRatingsData) : {};
-                        
-                        dispatch(setPosts(stalePosts));
-                        
-                        if (Object.keys(staleRatings).length > 0) {
-                            dispatch(setMultipleRatings(staleRatings));
-                        }
-                    }
-                } catch (cacheError) {
-                    console.error('Failed to use stale cache:', cacheError);
-                }
             } finally {
                 if (isMountedRef.current) {
                     setLoading(false);
@@ -224,7 +123,7 @@ function AllPosts() {
         return () => {
             isMountedRef.current = false;
         };
-    }, [dispatch, prefetchRatings]);
+    }, [dispatch, prefetchRatings, posts.length]);
 
     if (loading) {
         return <AllPostsSkeleton />;
@@ -256,9 +155,10 @@ function AllPosts() {
                     </div>
                 ) : (
                     <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6'>
-                        {posts.map((post) => (
+                        {posts.map((post, index) => (
                             <div key={post.$id} className="h-full">
-                                <PostCard {...post} />
+                                {/* Pass priority=true to the first few images for LCP boost */}
+                                <PostCard {...post} priority={index < 2} />
                             </div>
                         ))}
                     </div>

@@ -34,8 +34,7 @@ const Header = memo(() => {
               src={logo} 
               alt="Blog Ideas & Stories Logo" 
               style={{
-                width: 'var(--logo-header-w)', 
-                height: 'var(--logo-header-h)', 
+                width: 'var(--logo-header-w)',
                 marginLeft: 'var(--logo-header-ml)'
               }}
             />
@@ -85,11 +84,11 @@ const Header = memo(() => {
               <span className='text-gray-800'>& stories</span>
             </h1>
             <p 
-              className='text-indigo-600/70 font-medium tracking-wide border-t border-indigo-200/50 pt-1 mt-1'
-              style={{ fontSize: 'clamp(0.625rem, 1.2vw, 0.875rem)' }}
-            >
+              className='text-slate-700 font-medium tracking-wide border-t border-slate-200 pt-1 mt-1'
+              style={{ fontSize: 'clamp(0.625rem, 1.2vw, 0.875rem)' }}>
               Share your thoughts with the world
             </p>
+
           </div>
         </div>
       </Container>

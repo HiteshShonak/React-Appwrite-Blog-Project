@@ -10,10 +10,7 @@ import ProfilePictureManager from '../Components/ProfilePictureManager';
 import BioEditModal from '../Components/BioEditModal';
 import { DashboardAuthSkeleton } from '../Components/Skeletons.jsx';
 
-
-// ============================================================
-// 🗄️ DASHBOARD LOCALSTORAGE CACHE UTILITIES
-// ============================================================
+// ✅ Dashboard Cache Keys (Kept as per requirements)
 const DASHBOARD_CACHE = {
     POSTS: 'dashboard_user_posts',
     PROFILE: 'dashboard_user_profile',
@@ -22,7 +19,7 @@ const DASHBOARD_CACHE = {
     TIMESTAMP: 'dashboard_cache_timestamp'
 };
 
-const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
+const CACHE_DURATION = 15 * 60 * 1000; // 15 Minutes
 
 const isDashboardCacheValid = (userId) => {
     try {
@@ -78,6 +75,7 @@ const saveDashboardCache = (userId, posts, profile, ratings) => {
     } catch (error) {
         console.error('Error saving dashboard cache:', error);
         clearDashboardCache();
+        // Retry once
         try {
             localStorage.setItem(DASHBOARD_CACHE.POSTS, JSON.stringify(posts));
             localStorage.setItem(DASHBOARD_CACHE.PROFILE, JSON.stringify(profile));
@@ -100,7 +98,6 @@ const clearDashboardCache = () => {
     }
 };
 
-// ✅ Update only profile in cache
 const updateCachedProfile = (userId, profile) => {
     try {
         if (isDashboardCacheValid(userId)) {
@@ -111,7 +108,6 @@ const updateCachedProfile = (userId, profile) => {
     }
 };
 
-// ✅ Static configs
 const STAT_CONFIGS = [
     { 
         icon: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10", 
@@ -153,12 +149,10 @@ const BENEFIT_ICONS = [
 ];
 
 
-// ============================================================
-// 📊 DASHBOARD COMPONENT
-// ============================================================
 function Dashboard() {
     const posts = useSelector((state) => state.dashboard.userPosts);
     const cachedProfile = useSelector((state) => state.dashboard.userProfile); 
+    const cachedRatings = useSelector((state) => state.ratings.postRatings);
     const authStatus = useSelector((state) => state.auth.status);
     const userData = useSelector((state) => state.auth.userData);
     const currentUserId = useSelector((state) => state.auth.userData?.$id);
@@ -182,17 +176,32 @@ function Dashboard() {
         postCount: posts.length
     }), [posts]);
 
+    // ✅ OPTIMIZED: Return full rating object { average, count }
     const prefetchRatings = useCallback(async (postsList) => {
+        if (!postsList || postsList.length === 0) return {};
         if (!isMountedRef.current) return {};
         
         try {
-            const ratingsPromises = postsList.map(post => 
+            const postsNeedingRatings = postsList.filter(post => 
+                cachedRatings[post.$id] === undefined
+            );
+            
+            if (postsNeedingRatings.length === 0) {
+                return cachedRatings;
+            }
+            
+            const ratingsPromises = postsNeedingRatings.map(post => 
                 appwriteService.getPostRatings(post.$id)
                     .then(data => {
                         if (data && data.documents.length > 0) {
                             const total = data.documents.reduce((acc, curr) => acc + curr.stars, 0);
                             const avg = parseFloat((total / data.documents.length).toFixed(1));
-                            return { postId: post.$id, rating: avg };
+                            
+                            // ✅ FIX: Match Redux structure
+                            return { 
+                                postId: post.$id, 
+                                rating: { average: avg, count: data.documents.length } 
+                            };
                         }
                         return null;
                     })
@@ -203,20 +212,23 @@ function Dashboard() {
             
             if (!isMountedRef.current) return {};
             
-            const ratingsMap = {};
+            const newRatingsMap = {};
             results.forEach(result => {
                 if (result) {
-                    ratingsMap[result.postId] = result.rating;
+                    newRatingsMap[result.postId] = result.rating;
                 }
             });
 
-            dispatch(setMultipleRatings(ratingsMap));
-            return ratingsMap;
+            if (Object.keys(newRatingsMap).length > 0) {
+                dispatch(setMultipleRatings(newRatingsMap));
+            }
+            
+            return { ...cachedRatings, ...newRatingsMap };
         } catch (error) {
             console.error("Error prefetching ratings:", error);
-            return {};
+            return cachedRatings;
         }
-    }, [dispatch]);
+    }, [dispatch, cachedRatings]);
 
     useEffect(() => {
         isMountedRef.current = true;
@@ -233,6 +245,7 @@ function Dashboard() {
         const loadDashboardData = async () => {
             setLoading(true);
 
+            // Layer 1: Check LocalStorage (Dashboard only)
             const cachedData = getDashboardCache(currentUserId);
             
             if (cachedData) {
@@ -249,6 +262,7 @@ function Dashboard() {
                 return;
             }
 
+            // Layer 2: Fetch Fresh from Appwrite
             try {
                 const [profileRes, postsRes] = await Promise.all([
                     appwriteService.getUserProfile(currentUserId),
@@ -274,6 +288,7 @@ function Dashboard() {
 
                 if (!isMountedRef.current) return;
 
+                // Save to Cache
                 saveDashboardCache(currentUserId, userPosts, profileData, ratingsMap);
 
                 dispatch(setUserProfile(profileData));
@@ -286,6 +301,7 @@ function Dashboard() {
                 
                 console.error("Error fetching dashboard data:", error);
                 
+                // Fallback: Try Stale Cache if network fails
                 try {
                     const staleCache = localStorage.getItem(DASHBOARD_CACHE.POSTS);
                     const staleProfile = localStorage.getItem(DASHBOARD_CACHE.PROFILE);
@@ -320,9 +336,6 @@ function Dashboard() {
         };
     }, [authStatus, currentUserId, dispatch, prefetchRatings]);
 
-    
-
-    // Only fetch profile (for picture/bio updates) - 1 Read
     const refetchProfile = useCallback(async () => {
         if (!currentUserId) return;
 
@@ -340,7 +353,6 @@ function Dashboard() {
                 setUsername(profileData.username);
                 dispatch(setUserProfile(profileData));
                 
-                // ✅ Update cache with new profile (keep existing posts)
                 updateCachedProfile(currentUserId, profileData);
             }
         } catch (error) {
@@ -348,7 +360,6 @@ function Dashboard() {
         }
     }, [currentUserId, dispatch]);
 
-    // Only fetch posts (for post add/delete) - 1 Read + ratings
     const refetchPosts = useCallback(async () => {
         if (!currentUserId) return;
 
@@ -364,7 +375,6 @@ function Dashboard() {
                 
                 dispatch(setUserPosts(userPosts));
                 
-                // ✅ Update full cache (profile unchanged, posts updated)
                 const currentProfile = {
                     username,
                     bio: userBio,
@@ -393,11 +403,10 @@ function Dashboard() {
         updateCachedProfile(currentUserId, updatedProfile);
     }, [username, cachedProfile.profileImageId, currentUserId, dispatch]);
 
-    // GUEST VIEW
     if (!authStatus) {
+        // ... (Keep existing unauthorized view JSX)
         return (
             <div className='w-full min-h-screen bg-slate-50 py-12 sm:py-20 relative overflow-hidden page-anim px-2 sm:px-4'>
-                
                 <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
                 <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
 
@@ -458,7 +467,6 @@ function Dashboard() {
         return <DashboardAuthSkeleton />;
     }
 
-    // AUTHENTICATED DASHBOARD
     return (
         <div className='w-full min-h-screen bg-slate-50 py-6 sm:py-8 relative page-anim px-2 sm:px-4'>
             
@@ -471,12 +479,11 @@ function Dashboard() {
             />
 
             <Container>
-                {/* IDENTITY SECTION */}
+                {/* Profile Header */}
                 <div className="gpu-accelerate bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 mb-6 sm:mb-8 flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4">
                     
                     <div className="flex items-center gap-3 sm:gap-5 w-full md:w-auto">
                         <div className="shrink-0">
-                            {/* ✅ FIX 1: Only refetch profile, not posts */}
                             <ProfilePictureManager 
                                 initialFileId={cachedProfile.profileImageId} 
                                 onProfileUpdate={refetchProfile}
@@ -512,7 +519,7 @@ function Dashboard() {
                     </div>
                 </div>
 
-                {/* ACTION BAR */}
+                {/* Stats Section */}
                 <div className="flex items-end justify-between mb-4 sm:mb-6">
                     <div>
                         <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Overview</h2>
@@ -523,7 +530,6 @@ function Dashboard() {
                     </Link>
                 </div>
 
-                {/* STATS GRID */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-8 sm:mb-12">
                     {STAT_CONFIGS.map((stat, index) => (
                         <div key={index} className={`gpu-accelerate bg-white p-3 sm:p-4 md:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-100 flex items-center gap-2 sm:gap-3 md:gap-4 ${stat.span || ''}`}>
@@ -538,9 +544,8 @@ function Dashboard() {
                     ))}
                 </div>
 
-                {/* CONTENT SECTIONS */}
+                {/* Posts Section */}
                 <div className="space-y-8 sm:space-y-12">
-                    {/* DRAFTS SECTION */}
                     {draftPosts.length > 0 && (
                         <div>
                             <h2 className="text-lg sm:text-xl font-bold text-slate-800 mb-3 sm:mb-4 flex items-center gap-2">
@@ -558,7 +563,6 @@ function Dashboard() {
                         </div>
                     )}
 
-                    {/* PUBLISHED SECTION */}
                     <div>
                         <h2 className="text-lg sm:text-xl font-bold text-slate-800 mb-3 sm:mb-4 flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -588,6 +592,5 @@ function Dashboard() {
         </div>
     );
 }
-
 
 export default Dashboard;

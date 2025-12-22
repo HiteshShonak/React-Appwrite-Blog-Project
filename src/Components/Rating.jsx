@@ -5,7 +5,7 @@ import appwriteService from '../appwrite/config';
 import { setMultipleRatings } from '../Store/ratingSlice';
 import { Link } from 'react-router-dom';
 
-// ✅ HELPER: Calculate average rating (DRY principle)
+// ✅ Calculate average rating on device
 const calculateAverageRating = (ratings) => {
     if (!ratings || ratings.length === 0) return 0;
     const total = ratings.reduce((acc, curr) => acc + curr.stars, 0);
@@ -13,7 +13,6 @@ const calculateAverageRating = (ratings) => {
 };
 
 function Rating({ postId, postAuthorId }) {
-    // ✅ Early return if no postId
     if (!postId) {
         return (
             <div className="text-center py-6 text-slate-400 text-sm">
@@ -32,13 +31,12 @@ function Rating({ postId, postAuthorId }) {
     const userData = useSelector((state) => state.auth.userData);
     const dispatch = useDispatch();
 
-    // Memoize isAuthor check
     const isAuthor = useMemo(() => 
         userData && postAuthorId && userData.$id === postAuthorId,
         [userData, postAuthorId]
     );
 
-    // Fetch ratings ONLY when postId changes
+    // ✅ Fetch ratings once on mount
     useEffect(() => {
         let isCancelled = false;
         
@@ -48,6 +46,7 @@ function Rating({ postId, postAuthorId }) {
                 if (data?.documents && !isCancelled) {
                     setRatings(data.documents);
                     
+                    // ✅ Store in Redux for PostCard display only
                     const avgRating = calculateAverageRating(data.documents);
                     dispatch(setMultipleRatings({ [postId]: avgRating }));
                 }
@@ -65,23 +64,20 @@ function Rating({ postId, postAuthorId }) {
         };
     }, [postId, dispatch]);
 
-    // ✅ PERFECTED: Extract user's rating with all cases explicitly handled
+    // ✅ Extract user's rating from fetched data
     useEffect(() => {
         if (!userData) {
-            // Case 1: User not logged in
             setUserRating(0);
             setRatingId(null);
             return;
         }
 
         if (ratings.length === 0) {
-            // Case 2: User logged in, but no ratings yet
             setUserRating(0);
             setRatingId(null);
             return;
         }
 
-        // Case 3: User logged in + ratings exist
         const myRating = ratings.find(r => r.userId === userData.$id);
         if (myRating) {
             setUserRating(myRating.stars);
@@ -92,21 +88,18 @@ function Rating({ postId, postAuthorId }) {
         }
     }, [userData, ratings]);
 
-    // Scroll lock when modal is open
     useEffect(() => {
         document.body.style.overflow = isDeleteModalOpen ? 'hidden' : 'unset';
         return () => { document.body.style.overflow = 'unset'; };
     }, [isDeleteModalOpen]);
 
-    // Memoize average rating calculation
+    // ✅ Calculate average on device (not from Redux cache)
     const averageRating = useMemo(() => 
-        ratings.length 
-            ? (ratings.reduce((acc, curr) => acc + curr.stars, 0) / ratings.length).toFixed(1) 
-            : "0.0",
+        calculateAverageRating(ratings),
         [ratings]
     );
 
-    // Handle rating submission
+    // ✅ Handle rating - optimistic update + real fetch
     const handleRate = useCallback(async (stars) => {
         if (!userData || submitting || isAuthor) return;
         setSubmitting(true);
@@ -126,10 +119,12 @@ function Rating({ postId, postAuthorId }) {
         setRatings(newRatingsList);
 
         try {
+            // ✅ Send user's rating to Appwrite
             await appwriteService.setRating({ postId, userId: userData.$id, stars });
             
+            // ✅ Fetch fresh data to get accurate count + average
             const freshData = await appwriteService.getPostRatings(postId);
-            if (freshData && freshData.documents) {
+            if (freshData?.documents) {
                 setRatings(freshData.documents);
                 
                 const newAverage = calculateAverageRating(freshData.documents);
@@ -150,7 +145,7 @@ function Rating({ postId, postAuthorId }) {
         }
     }, [userData, submitting, isAuthor, ratings, userRating, postId, dispatch]);
 
-    // Delete rating
+    // ✅ Delete rating
     const confirmDelete = useCallback(async () => {
         setSubmitting(true);
         setIsDeleteModalOpen(false);
@@ -165,7 +160,7 @@ function Rating({ postId, postAuthorId }) {
             await appwriteService.deleteRating(ratingId);
             
             const freshData = await appwriteService.getPostRatings(postId);
-            if (freshData && freshData.documents) {
+            if (freshData?.documents) {
                 setRatings(freshData.documents);
                 
                 const newAverage = calculateAverageRating(freshData.documents);
@@ -183,13 +178,13 @@ function Rating({ postId, postAuthorId }) {
 
     return (
         <>
-            {/* Main Rating Component */}
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 py-2">
                 
-                {/* LEFT: Stats */}
                 <div className="flex items-center gap-4">
                     <div className="flex flex-col items-center bg-white border border-slate-200 rounded-2xl p-3 min-w-20 shadow-sm">
-                        <span className="text-3xl font-black text-slate-800 leading-none">{averageRating}</span>
+                        <span className="text-3xl font-black text-slate-800 leading-none">
+                            {averageRating.toFixed(1)}
+                        </span>
                         <div className="flex items-center gap-0.5 mt-1">
                             <svg className="w-3 h-3 text-yellow-500 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
                             <span className="text-[10px] font-bold text-slate-400 uppercase">Avg</span>
@@ -205,7 +200,6 @@ function Rating({ postId, postAuthorId }) {
                     </div>
                 </div>
 
-                {/* RIGHT: Interaction */}
                 <div className="flex flex-col items-center md:items-end gap-2">
                     {isAuthor ? (
                         <div className="flex flex-col items-center gap-2">
@@ -275,7 +269,6 @@ function Rating({ postId, postAuthorId }) {
                 </div>
             </div>
 
-            {/* Delete confirmation modal */}
             {isDeleteModalOpen && createPortal(
                 <div 
                     className="gpu-accelerate fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"

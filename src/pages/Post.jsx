@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { createPortal } from "react-dom";
 import appwriteService from "../appwrite/config"; 
@@ -14,6 +14,24 @@ import Comments from "../Components/Comments";
 import Rating from "../Components/Rating.jsx";
 import { PostSkeleton } from "../Components/Skeletons.jsx";
 
+// ✅ Helper to update dashboard cache (Remove item)
+const removePostFromDashboardCache = (postId) => {
+    try {
+        const cacheKey = 'dashboard_user_posts';
+        const cachedData = localStorage.getItem(cacheKey);
+        
+        if (!cachedData) return;
+
+        const posts = JSON.parse(cachedData);
+        const updatedPosts = posts.filter(p => p.$id !== postId);
+
+        localStorage.setItem(cacheKey, JSON.stringify(updatedPosts));
+        console.log('✅ Dashboard cache updated (delete) - No API fetch required.');
+    } catch (error) {
+        console.error("Manual cache update failed:", error);
+    }
+};
+
 export default function Post() {
     const { slug } = useParams();
     const navigate = useNavigate();
@@ -21,83 +39,77 @@ export default function Post() {
     
     const userData = useSelector((state) => state.auth.userData);
 
-    // 1. Redux Selectors (Cache Strategy)
-    const allPosts = useSelector((state) => state.posts.posts);
-    const trendingPosts = useSelector((state) => state.home.trendingPosts);
-    const userPosts = useSelector((state) => state.dashboard.userPosts);
+    const cachedPost = useSelector((state) => {
+        const fromAllPosts = state.posts.posts.find((p) => p.$id === slug);
+        if (fromAllPosts) return fromAllPosts;
+        
+        const fromTrending = state.home.trendingPosts.find((p) => p.$id === slug);
+        if (fromTrending) return fromTrending;
+        
+        return state.dashboard.userPosts.find((p) => p.$id === slug) || null;
+    });
 
-    // 2. Compute Cached Post
-    const cachedPost = React.useMemo(() => 
-        allPosts.find((p) => p.$id === slug) || 
-        trendingPosts.find((p) => p.$id === slug) || 
-        userPosts.find((p) => p.$id === slug),
-        [allPosts, trendingPosts, userPosts, slug]
-    );
-
-    const [post, setPost] = useState(cachedPost || null);
+    const [post, setPost] = useState(cachedPost);
     const [loading, setLoading] = useState(!cachedPost);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [authorAvatarUrl, setAuthorAvatarUrl] = useState(null); 
+    const [authorUsername, setAuthorUsername] = useState(null);
     
-    // 3. Safety Refs
     const isMountedRef = useRef(true); 
     const viewIncrementedRef = useRef(false);
+    const hasFetchedRef = useRef(false);
 
-    // 4. Derived Values (Safe to compute every render)
     const authorId = post?.UserId;
     const postId = post?.$id;
     const postAuthorId = post?.UserId;
-    const authorName = post?.AuthorName || 'Guest Author';
-    const authorInitials = authorName.split(' ').map(n => n[0]).join('').toUpperCase() || 'AU';
-    const isAuthor = post && userData ? post.UserId === userData.$id : false;
-    
-    // ✅ OPTIMIZED: No useMemo for simple date formatting
-    const formattedDate = post?.$createdAt 
-        ? new Date(post.$createdAt).toLocaleDateString(undefined, { 
-            year: 'numeric', month: 'short', day: 'numeric' 
-          })
-        : 'N/A';
 
-    // 5. Author Caching Strategy
     const cachedAuthor = useSelector((state) => 
         state.users && authorId ? state.users.profiles[authorId] : null
     );
 
-    const [authorAvatarUrl, setAuthorAvatarUrl] = useState(cachedAuthor?.avatar || null); 
-    const [authorUsername, setAuthorUsername] = useState(cachedAuthor?.username || null);
+    const { authorName, authorInitials, isAuthor, formattedDate } = useMemo(() => {
+        const name = post?.AuthorName || 'Guest Author';
+        const initials = name.split(' ').map(n => n[0]).join('').toUpperCase() || 'AU';
+        const author = post && userData ? post.UserId === userData.$id : false;
+        const date = post?.$createdAt 
+            ? new Date(post.$createdAt).toLocaleDateString(undefined, { 
+                year: 'numeric', month: 'short', day: 'numeric' 
+              })
+            : 'N/A';
+        
+        return { authorName: name, authorInitials: initials, isAuthor: author, formattedDate: date };
+    }, [post, userData]);
 
-    // Scroll to top on mount
     useEffect(() => {
         window.scrollTo(0, 0);
         isMountedRef.current = true;
-        // Reset view increment lock when slug changes
-        viewIncrementedRef.current = false; 
+        viewIncrementedRef.current = false;
+        hasFetchedRef.current = false;
         
         return () => {
             isMountedRef.current = false;
         };
     }, [slug]);
 
-    // 🔒 Scroll Lock for Modal
     useEffect(() => {
         document.body.style.overflow = isDeleteModalOpen ? 'hidden' : 'unset';
         return () => { document.body.style.overflow = 'unset'; };
     }, [isDeleteModalOpen]);
 
-    // 👤 Author Data Fetching
     useEffect(() => {
         if (!authorId) return;
 
-        // If we have Redux cache, update local state and stop.
         if (cachedAuthor) {
             setAuthorUsername(cachedAuthor.username);
             setAuthorAvatarUrl(cachedAuthor.avatar);
             return;
         }
 
-        // Otherwise fetch
+        let isCancelled = false;
+
         appwriteService.getUserProfile(authorId)
             .then((profile) => {
-                if (!isMountedRef.current || !profile) return;
+                if (isCancelled || !isMountedRef.current || !profile) return;
 
                 const avatar = profile.ProfileImageFileId 
                     ? appwriteService.getAvatarPreview(profile.ProfileImageFileId) 
@@ -107,19 +119,25 @@ export default function Post() {
                 setAuthorUsername(username);
                 setAuthorAvatarUrl(avatar);
 
-                // Update Redux Cache
                 dispatch(cacheUserProfile({
                     userId: authorId,
                     profileData: { username, avatar }
                 }));
             })
-            .catch((err) => console.error("Author fetch error:", err));
+            .catch((err) => {
+                if (!isCancelled) {
+                    console.error("Author fetch error:", err);
+                }
+            });
 
+        return () => {
+            isCancelled = true;
+        };
     }, [authorId, cachedAuthor, dispatch]);
 
-    // 📄 Main Post Fetching
     useEffect(() => {
-        // ✅ DRY HELPER: Handle view counts in one place
+        if (hasFetchedRef.current) return;
+
         const handleViewIncrement = async (currentPost) => {
             if (currentPost.Views !== undefined && !viewIncrementedRef.current && !hasViewedCookie(currentPost.$id)) {
                 viewIncrementedRef.current = true;
@@ -137,15 +155,14 @@ export default function Post() {
         };
 
         const loadPost = async () => {
-            // Scenario A: Post is in Redux Cache
             if (cachedPost) {
                 setPost(cachedPost);
                 setLoading(false);
                 handleViewIncrement(cachedPost);
+                hasFetchedRef.current = true;
                 return;
             }
 
-            // Scenario B: Fetch from API
             setLoading(true);
             try {
                 const fetchedPost = await appwriteService.getPost(slug);
@@ -162,15 +179,16 @@ export default function Post() {
                 console.error("Post fetch error:", error);
                 if (isMountedRef.current) navigate("/");
             } finally {
-                if (isMountedRef.current) setLoading(false);
+                if (isMountedRef.current) {
+                    setLoading(false);
+                }
+                hasFetchedRef.current = true;
             }
         };
 
         loadPost();
+    }, [slug, cachedPost, navigate]);
 
-    }, [slug, navigate, cachedPost]); // ✅ Dependencies are clean
-
-    // 🗑️ Delete Logic
     const handleDeleteClick = useCallback(() => setIsDeleteModalOpen(true), []);
 
     const confirmDelete = useCallback(async () => {
@@ -183,10 +201,15 @@ export default function Post() {
             if (status) {
                 await appwriteService.deleteFile(featuredImageId);
                 
+                // 1. Update Redux (Memory)
                 dispatch(deletePost(post.$id));
                 dispatch(deleteUserPost(post.$id));
                 dispatch(deleteTrendingPost(post.$id));
                 
+                // 2. Update LocalStorage (Disk)
+                // This ensures that when you land on Dashboard, the post is already gone.
+                removePostFromDashboardCache(post.$id);
+
                 navigate("/dashboard");
             }
         } catch (error) {
@@ -199,7 +222,6 @@ export default function Post() {
     return post ? (
         <div className="py-8 sm:py-12 bg-slate-50 min-h-screen relative page-anim px-2 sm:px-4">
             
-            {/* Delete Modal Portal */}
             {isDeleteModalOpen && createPortal(
                 <div 
                     className="gpu-accelerate fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"

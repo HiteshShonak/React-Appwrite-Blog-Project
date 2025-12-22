@@ -17,7 +17,6 @@
   
   /* Responsive Logo Sizes */
   --logo-header-w: clamp(95px, 15vw, 170px);
-  --logo-header-h: clamp(42px, 7vw, 75px);
   --logo-header-ml: clamp(2px, 0.2vw, 6px);
   --logo-footer-w: clamp(160px, 22vw, 240px);
   --logo-footer-h: clamp(80px, 12vw, 140px);

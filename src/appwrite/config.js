@@ -365,6 +365,25 @@ export class Service {
         }
     }
 
+    // Get specific user's rating for a post (Fixes pagination bug)
+    async getUserRating(postId, userId) {
+    try {
+        return await this.databases.listDocuments(
+            conf.appwriteDatabaseId,
+            conf.appwriteRatingsCollectionId,
+            [
+                Query.equal('postId', postId),
+                Query.equal('userId', userId),
+                Query.limit(1)
+            ]
+        );
+    } catch (error) {
+        console.log("Appwrite service :: getUserRating :: error", error);
+        return null;
+    }
+}
+
+
     // 2. Rate a Post (Create or Update)
     async setRating({ postId, userId, stars }) {
         try {

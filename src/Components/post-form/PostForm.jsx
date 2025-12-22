@@ -13,18 +13,42 @@ import { updateTrendingPost } from '../../Store/homeSlice';
 import ImageCropper from '../ImageCropper.jsx';
 import { EditorLoader } from '../Skeletons.jsx';
 
-// ✅ PERFECT DEBOUNCE: With cleanup capability
+// ✅ SMART CACHE MANAGER: Updates localStorage directly to prevent API calls
+const updateDashboardCache = (action, post) => {
+    try {
+        const cacheKey = 'dashboard_user_posts';
+        const cachedData = localStorage.getItem(cacheKey);
+        
+        if (!cachedData) return; // If no cache, Redux/API will handle it normally
+
+        let posts = JSON.parse(cachedData);
+
+        if (action === 'add') {
+            // Add new post to the top
+            posts.unshift(post);
+        } else if (action === 'update') {
+            // Find and replace the specific post
+            posts = posts.map(p => p.$id === post.$id ? post : p);
+        }
+
+        // Save back to localStorage immediately
+        localStorage.setItem(cacheKey, JSON.stringify(posts));
+        console.log(`✅ Dashboard cache updated (${action}) - No API fetch required.`);
+        
+    } catch (error) {
+        console.error("Manual cache update failed:", error);
+        // If update fails, fallback to clearing so we fetch fresh next time
+        localStorage.removeItem('dashboard_user_posts');
+    }
+};
+
 const debounce = (func, delay) => {
     let timeoutId;
-    
     const debouncedFn = (...args) => {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => func(...args), delay);
     };
-    
-    // ✅ Expose cleanup function
     debouncedFn.cancel = () => clearTimeout(timeoutId);
-    
     return debouncedFn;
 };
 
@@ -48,11 +72,9 @@ function PostForm({ post }) {
     const [previewUrl, setPreviewUrl] = useState(post ? appwriteService.getFileView(post.featuredImage) : null);
     const [selectedFile, setSelectedFile] = useState(null);
 
-    // Cropper State
     const [isCropperOpen, setIsCropperOpen] = useState(false);
     const [tempImage, setTempImage] = useState(null);
 
-    // Refs
     const fileReaderRef = useRef(null);
     const isMountedRef = useRef(true);
     const prevPreviewUrlRef = useRef(null);
@@ -60,7 +82,6 @@ function PostForm({ post }) {
     const isLoading = useMemo(() => isInitializing || submitting, [isInitializing, submitting]);
     const isEditMode = useMemo(() => !!post, [post]);
 
-    // Mount/unmount tracking
     useEffect(() => {
         isMountedRef.current = true;
         return () => {
@@ -68,7 +89,6 @@ function PostForm({ post }) {
         };
     }, []);
 
-    // ✅ OPTIMIZED: No artificial delay
     useEffect(() => {
         let isCancelled = false;
         
@@ -94,13 +114,11 @@ function PostForm({ post }) {
         };
     }, [post]);
 
-    // Lock scroll when loading
     useEffect(() => {
         document.body.style.overflow = isLoading ? 'hidden' : 'unset';
         return () => { document.body.style.overflow = 'unset'; };
     }, [isLoading]);
 
-    // ✅ Better draft restoration
     useEffect(() => {
         if (!post) {
             const savedDraft = localStorage.getItem("blog-post-draft");
@@ -123,7 +141,6 @@ function PostForm({ post }) {
         }
     }, [post, reset]);
 
-    // ✅ PERFECT: Debounced draft saving with cleanup
     useEffect(() => {
         if (!post) {
             const debouncedSave = debounce((value) => {
@@ -138,12 +155,11 @@ function PostForm({ post }) {
             
             return () => {
                 subscription.unsubscribe();
-                debouncedSave.cancel(); // ✅ Clear pending timeout
+                debouncedSave.cancel(); 
             };
         }
     }, [watch, post]);
 
-    // ✅ FileReader with cleanup
     const handleFileChange = useCallback((e) => {
         if (e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
@@ -195,7 +211,6 @@ function PostForm({ post }) {
         };
     }, []);
 
-    // ✅ Cleanup old preview URL
     const handleCropDone = useCallback(async (croppedBlob) => {
         setIsCropperOpen(false);
         try {
@@ -228,7 +243,6 @@ function PostForm({ post }) {
         return '';
     }, []);
 
-    // ✅ Helper: File upload
     const handleFileUpload = useCallback(async () => {
         if (!selectedFile) return null;
         
@@ -243,7 +257,6 @@ function PostForm({ post }) {
         return file?.$id || null;
     }, [selectedFile, post]);
 
-    // ✅ Helper: Create new post
     const createNewPost = useCallback(async (data, fileId) => {
         if (!fileId) throw new Error("⚠️ Please upload a featured image!");
 
@@ -257,16 +270,20 @@ function PostForm({ post }) {
         if (!isMountedRef.current) return;
         
         if (dbPost) {
+            // 1. Update Redux (Memory) - Shows instantly in UI
             if (dbPost.Status === 'active') {
                 dispatch(addPost(dbPost));
             }
             dispatch(addUserPost(dbPost));
+
+            // 2. Update LocalStorage (Disk) - Persists refresh without API call
+            updateDashboardCache('add', dbPost);
+            
             localStorage.removeItem("blog-post-draft");
             navigate(`/post/${dbPost.$id}`);
         }
     }, [userData, dispatch, navigate]);
 
-    // ✅ Helper: Update existing post
     const updateExistingPost = useCallback(async (data, fileId) => {
         const dbPost = await appwriteService.updatePost(post.$id, {
             ...data,
@@ -276,17 +293,21 @@ function PostForm({ post }) {
         if (!isMountedRef.current) return;
         
         if (dbPost) {
+            // 1. Update Redux (Memory)
             if (dbPost.Status === 'active') {
                 dispatch(updatePost(dbPost));
                 dispatch(updateTrendingPost(dbPost));
             }
             dispatch(updateUserPost(dbPost));
+
+            // 2. Update LocalStorage (Disk) - Zero API on reload
+            updateDashboardCache('update', dbPost);
+            
             localStorage.removeItem("blog-post-draft");
             navigate(`/post/${dbPost.$id}`);
         }
     }, [post, dispatch, navigate]);
 
-    // ✅ Main submit function
     const submit = useCallback(async (data) => {
         if (!isMountedRef.current) return;
         
@@ -318,7 +339,6 @@ function PostForm({ post }) {
         }
     }, [post, handleFileUpload, updateExistingPost, createNewPost]);
 
-    // Auto-generate slug from title
     useEffect(() => {
         const subscription = watch((value, { name }) => {
             if (name === 'title') {
@@ -328,7 +348,6 @@ function PostForm({ post }) {
         return () => subscription.unsubscribe();
     }, [watch, slugTransform, setValue]);
 
-    // Auto-clear error after 6 seconds
     useEffect(() => {
         if (error) {
             const timer = setTimeout(() => {
@@ -344,7 +363,6 @@ function PostForm({ post }) {
         setValue('slug', slugTransform(e.currentTarget.value), { shouldValidate: true });
     }, [setValue, slugTransform]);
 
-    // ✅ Cleanup all preview URLs on unmount
     useEffect(() => {
         return () => {
             if (prevPreviewUrlRef.current && prevPreviewUrlRef.current.startsWith('blob:')) {

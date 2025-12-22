@@ -7,18 +7,14 @@ import { AuthorProfileSkeleton } from '../Components/Skeletons';
 import { useDispatch, useSelector } from 'react-redux';
 import { setMultipleRatings } from '../Store/ratingSlice';
 
-// ============================================================
-// 🗄️ AUTHOR PROFILE LOCALSTORAGE CACHE UTILITIES
-// ============================================================
-const AUTHOR_CACHE_PREFIX = 'author_profile_';
-const CACHE_DURATION = 20 * 60 * 1000; // 20 minutes (longer than dashboard because author content changes less)
 
-// Get cache key for specific username
+const AUTHOR_CACHE_PREFIX = 'author_profile_';
+const CACHE_DURATION = 20 * 60 * 1000;
+
 const getAuthorCacheKey = (username) => `${AUTHOR_CACHE_PREFIX}${username}`;
 const getAuthorTimestampKey = (username) => `${AUTHOR_CACHE_PREFIX}${username}_timestamp`;
 const getAuthorRatingsKey = (username) => `${AUTHOR_CACHE_PREFIX}${username}_ratings`;
 
-// Check if cache is valid for this author
 const isAuthorCacheValid = (username) => {
     try {
         const timestampKey = getAuthorTimestampKey(username);
@@ -34,7 +30,6 @@ const isAuthorCacheValid = (username) => {
     }
 };
 
-// Get cached author data
 const getAuthorCache = (username) => {
     try {
         if (!isAuthorCacheValid(username)) {
@@ -60,7 +55,6 @@ const getAuthorCache = (username) => {
     }
 };
 
-// Save author data to cache
 const saveAuthorCache = (username, profile, posts, authorName, avatarUrl, ratings) => {
     try {
         const cacheKey = getAuthorCacheKey(username);
@@ -79,7 +73,6 @@ const saveAuthorCache = (username, profile, posts, authorName, avatarUrl, rating
         localStorage.setItem(timestampKey, Date.now().toString());
     } catch (error) {
         console.error('Error saving author cache:', error);
-        // If quota exceeded, clear this author's cache and try once more
         clearAuthorCache(username);
         try {
             const cacheKey = getAuthorCacheKey(username);
@@ -97,7 +90,6 @@ const saveAuthorCache = (username, profile, posts, authorName, avatarUrl, rating
     }
 };
 
-// Clear specific author's cache
 const clearAuthorCache = (username) => {
     try {
         localStorage.removeItem(getAuthorCacheKey(username));
@@ -108,9 +100,7 @@ const clearAuthorCache = (username) => {
     }
 };
 
-// ============================================================
-// 👤 AUTHOR PROFILE COMPONENT
-// ============================================================
+
 function AuthorProfile() {
     const { username } = useParams();
     const dispatch = useDispatch();
@@ -121,21 +111,30 @@ function AuthorProfile() {
     const [avatarUrl, setAvatarUrl] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // ✅ Memoized computed values
+    const cachedRatings = useSelector((state) => state.ratings.postRatings);
+
     const initials = useMemo(() => 
         authorName.split(' ').map(n => n[0]).join('').toUpperCase() || 'AU',
         [authorName]
     );
 
-    // ✅ Scroll to top when username changes
     useEffect(() => {
         window.scrollTo(0, 0);
     }, [username]);
 
-    // ✅ OPTIMIZATION: Prefetch ratings for author's posts
     const prefetchRatings = useCallback(async (postsList) => {
+        if (!postsList || postsList.length === 0) return {};
+        
         try {
-            const ratingsPromises = postsList.map(post => 
+            const postsNeedingRatings = postsList.filter(post => 
+                cachedRatings[post.$id] === undefined
+            );
+            
+            if (postsNeedingRatings.length === 0) {
+                return cachedRatings;
+            }
+            
+            const ratingsPromises = postsNeedingRatings.map(post => 
                 appwriteService.getPostRatings(post.$id)
                     .then(data => {
                         if (data && data.documents.length > 0) {
@@ -150,22 +149,24 @@ function AuthorProfile() {
 
             const results = await Promise.all(ratingsPromises);
             
-            const ratingsMap = {};
+            const newRatingsMap = {};
             results.forEach(result => {
                 if (result) {
-                    ratingsMap[result.postId] = result.rating;
+                    newRatingsMap[result.postId] = result.rating;
                 }
             });
 
-            dispatch(setMultipleRatings(ratingsMap));
-            return ratingsMap;
+            if (Object.keys(newRatingsMap).length > 0) {
+                dispatch(setMultipleRatings(newRatingsMap));
+            }
+            
+            return { ...cachedRatings, ...newRatingsMap };
         } catch (error) {
             console.error("Error prefetching ratings:", error);
-            return {};
+            return cachedRatings;
         }
-    }, [dispatch]);
+    }, [dispatch, cachedRatings]);
 
-    // ✅ MULTI-LAYER CACHING: localStorage → Database
     useEffect(() => {
         if (!username) {
             setLoading(false);
@@ -177,18 +178,15 @@ function AuthorProfile() {
         const fetchAuthorData = async () => {
             setLoading(true);
 
-            // Layer 1: Check localStorage cache
             const cachedData = getAuthorCache(username);
             
             if (cachedData) {
-                // ✅ USE CACHED DATA (0 database reads!)
                 if (!isCancelled) {
                     setAuthorProfile(cachedData.profile);
                     setPosts(cachedData.posts);
                     setAuthorName(cachedData.authorName);
                     setAvatarUrl(cachedData.avatarUrl);
                     
-                    // Dispatch cached ratings to Redux
                     dispatch(setMultipleRatings(cachedData.ratings));
                     
                     setLoading(false);
@@ -196,9 +194,7 @@ function AuthorProfile() {
                 return;
             }
 
-            // Layer 2: Fetch from database (cache miss or expired)
             try {
-                // Fetch profile by username
                 const profileData = await appwriteService.getProfileByUsername(username);
 
                 if (isCancelled) return;
@@ -206,14 +202,12 @@ function AuthorProfile() {
                 if (profileData) {
                     setAuthorProfile(profileData);
                     
-                    // Set avatar if available
                     let avatar = null;
                     if (profileData.ProfileImageFileId) {
                         avatar = appwriteService.getAvatarPreview(profileData.ProfileImageFileId);
                         setAvatarUrl(avatar);
                     }
 
-                    // Fetch author's posts
                     const postsData = await appwriteService.getPosts([
                         Query.equal("UserId", profileData.UserId),
                         Query.equal("Status", "active"),
@@ -234,12 +228,10 @@ function AuthorProfile() {
                         setAuthorName(displayName);
                     }
 
-                    // Fetch ratings for all posts
                     const ratingsMap = await prefetchRatings(authorPosts);
 
                     if (isCancelled) return;
 
-                    // ✅ SAVE TO LOCALSTORAGE CACHE
                     saveAuthorCache(
                         username,
                         profileData,
@@ -254,7 +246,6 @@ function AuthorProfile() {
                 if (!isCancelled) {
                     console.error("Error fetching author data:", error);
                     
-                    // Try to use stale cache on error
                     try {
                         const staleCache = localStorage.getItem(getAuthorCacheKey(username));
                         const staleRatings = localStorage.getItem(getAuthorRatingsKey(username));
@@ -287,12 +278,10 @@ function AuthorProfile() {
         };
     }, [username, dispatch, prefetchRatings]);
 
-    // Skeleton loading screen
     if (loading) {
         return <AuthorProfileSkeleton />;
     }
 
-    // Profile not found
     if (!authorProfile && !loading) {
         return (
             <div className="w-full min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 text-center px-2 sm:px-4 page-anim">
@@ -324,12 +313,10 @@ function AuthorProfile() {
         <div className='w-full min-h-screen bg-slate-50 py-8 sm:py-12 px-2 sm:px-4 page-anim'>
             <Container>
                 
-                {/* Profile card */}
                 <div className="gpu-accelerate bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 mb-8 sm:mb-12">
                     
                     <div className="flex flex-col md:flex-row items-center md:items-start gap-4 sm:gap-6 text-center md:text-left">
                         
-                        {/* Avatar */}
                         <div className="shrink-0">
                             <div className="gpu-accelerate w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-slate-100 shadow-sm bg-indigo-50">
                                 {avatarUrl ? (
@@ -342,7 +329,6 @@ function AuthorProfile() {
                             </div>
                         </div>
 
-                        {/* Name & stats */}
                         <div className="flex-1 pt-0 sm:pt-2">
                             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight mb-1">
                                 {authorName}
@@ -364,7 +350,6 @@ function AuthorProfile() {
 
                     <hr className="my-6 sm:my-8 border-slate-100" />
 
-                    {/* Bio section */}
                     <div>
                         <h3 className="text-base sm:text-lg font-bold text-slate-800 mb-3 flex items-center justify-center md:justify-start gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
@@ -378,7 +363,6 @@ function AuthorProfile() {
                     </div>
                 </div>
 
-                {/* Posts grid */}
                 <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-8 px-2">
                     <div className="h-6 sm:h-8 w-1.5 bg-indigo-500 rounded-full"></div>
                     <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Latest Articles</h2>

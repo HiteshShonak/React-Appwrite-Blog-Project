@@ -12,6 +12,7 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
+    // ✅ Optimization: Check Redux cache for author profile
     const cachedAuthor = useSelector((state) => 
         state.users && comment.userId ? state.users.profiles[comment.userId] : null
     );
@@ -29,7 +30,7 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
     );
     const likeCount = useMemo(() => comment.likedBy ? comment.likedBy.length : 0, [comment.likedBy]);
     
-    const formattedDate = (() => {
+    const formattedDate = useMemo(() => {
         if (isTemp) return 'Posting...';
         
         const date = new Date(comment.$createdAt);
@@ -41,9 +42,10 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
             month: 'short', 
             day: 'numeric' 
         });
-    })();
+    }, [comment.$createdAt, isTemp]);
 
     useEffect(() => {
+        // If we have cached data or it's a temp comment, use it/skip fetch
         if (isTemp || cachedAuthor) {
             if (cachedAuthor) {
                 setAuthorUsername(cachedAuthor.username);
@@ -67,6 +69,7 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
                     setAuthorUsername(username);
                     setAuthorAvatarUrl(avatarUrl);
                     
+                    // Cache for future use
                     dispatch(cacheUserProfile({
                         userId: comment.userId,
                         profileData: { username, avatar: avatarUrl }
@@ -190,14 +193,12 @@ function Comments({ postId, postAuthorId }) {
     const userData = useSelector((state) => state.auth.userData);
     const dispatch = useDispatch();
     
-    // ✅ GEMINI'S FIX #1: Add isMountedRef for handleSubmit
     const isMountedRef = useRef(true);
 
     const cachedUserProfile = useSelector((state) => 
         state.users && userData?.$id ? state.users.profiles[userData.$id] : null
     );
 
-    // ✅ Mount/unmount tracking
     useEffect(() => {
         isMountedRef.current = true;
         return () => {
@@ -210,6 +211,7 @@ function Comments({ postId, postAuthorId }) {
         return () => { document.body.style.overflow = 'unset'; };
     }, [deleteCommentId]);
 
+    // Current User Profile Logic
     useEffect(() => {
         if (!userData) {
             setCurrentUserAvatar(null);
@@ -249,6 +251,7 @@ function Comments({ postId, postAuthorId }) {
         };
     }, [userData, cachedUserProfile, dispatch]);
 
+    // Initial Load of Comments
     useEffect(() => {
         let isCancelled = false;
 
@@ -278,24 +281,21 @@ function Comments({ postId, postAuthorId }) {
     }, [postId]);
 
     const fetchComments = useCallback(async (isSilent = false) => {
-        if (!isSilent) setLoading(true);
+        if (!isSilent && isMountedRef.current) setLoading(true);
         try {
             const data = await appwriteService.getComments(postId);
-            if (data?.documents) setComments(data.documents);
+            if (data?.documents && isMountedRef.current) setComments(data.documents);
         } catch (error) {
             console.error("Error fetching comments:", error);
         } finally {
-            if (!isSilent) setLoading(false);
+            if (!isSilent && isMountedRef.current) setLoading(false);
         }
     }, [postId]);
 
-    // ✅ GEMINI'S FIX #1 & #2: Protected setState + Better rollback
     const handleSubmit = useCallback(async (e) => {
         e.preventDefault();
-        if (!newComment.trim() || !userData) return;
-        
-        // ✅ Store the actual content being submitted
-        const submittedContent = newComment.trim();
+        const content = newComment.trim();
+        if (!content || !userData) return;
         
         if (isMountedRef.current) {
             setSubmitting(true);
@@ -304,7 +304,7 @@ function Comments({ postId, postAuthorId }) {
         const tempId = `temp-${Date.now()}`;
         const optimisticComment = {
             $id: tempId,
-            content: submittedContent,
+            content: content,
             postId,
             userId: userData.$id,
             authorName: userData.name,
@@ -319,25 +319,25 @@ function Comments({ postId, postAuthorId }) {
 
         try {
             await appwriteService.createComment({
-                content: submittedContent,
+                content: content,
                 postId,
                 userId: userData.$id,
                 authorName: userData.name,
                 likedBy: []
             });
             
+            // Re-fetch to get real ID and server timestamp
             if (isMountedRef.current) {
                 fetchComments(true);
             }
         } catch (error) {
             console.error("Error posting comment:", error);
             if (isMountedRef.current) {
+                // Rollback on error
                 setComments((prev) => prev.filter(c => c.$id !== tempId));
-                // ✅ Restore the exact text that was submitted
-                setNewComment(submittedContent);
+                setNewComment(content); // Restore text so user doesn't lose it
             }
         } finally {
-            // ✅ Protected setState
             if (isMountedRef.current) {
                 setSubmitting(false);
             }
@@ -348,15 +348,18 @@ function Comments({ postId, postAuthorId }) {
         if (!deleteCommentId) return;
         const commentToDelete = deleteCommentId;
         setDeleteCommentId(null);
+        
         const previousComments = [...comments];
         setComments((prev) => prev.filter(c => c.$id !== commentToDelete));
 
         try {
             await appwriteService.deleteComment(commentToDelete);
-            fetchComments(true);
+            fetchComments(true); // Sync with server
         } catch (error) {
             console.error("Error deleting comment:", error);
-            setComments(previousComments);
+            if (isMountedRef.current) {
+                setComments(previousComments); // Rollback
+            }
         }
     }, [deleteCommentId, comments, fetchComments]);
 
@@ -374,7 +377,7 @@ function Comments({ postId, postAuthorId }) {
             await appwriteService.updateComment(comment.$id, { likedBy: updatedLikes });
         } catch (error) { 
             console.error("Error toggling like:", error);
-            fetchComments(true); 
+            fetchComments(true); // Revert/Sync on error
         }
     }, [userData, fetchComments]);
 

@@ -2,7 +2,8 @@
 import DarkLogo from '../../assets/DarkLogo.webp';
 import { Link } from 'react-router-dom';
 
-// ✅ OPTIMIZATION 1: Move static data outside component (prevents recreation on every render)
+
+
 const FOOTER_SECTIONS = [
   {
     title: "Company",
@@ -33,14 +34,15 @@ const FOOTER_SECTIONS = [
   }
 ];
 
-// ✅ OPTIMIZATION 2: Wrap component in memo() to prevent unnecessary re-renders
+
 const Footer = memo(() => {
   const currentYear = useMemo(() => new Date().getFullYear(), []);
 
+
   return (
     <footer 
-      className="mt-auto w-full bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 text-gray-100 border-t border-white/10 shadow-[0_-6px_16px_rgba(0,0,0,0.18)] backdrop-blur"
-      aria-label="Site footer" // ✅ ENHANCEMENT 1: Accessible footer label
+      className="mt-auto w-full bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 text-gray-100 border-t border-white/10 shadow-[0_-6px_16px_rgba(0,0,0,0.18)] backdrop-blur min-h-50 sm:min-h-40"
+      aria-label="Site footer"
     >
       <div className="flex justify-between user-select-none user-drag-none px-3 sm:px-6 py-3 sm:py-6 flex-col gap-0 sm:flex-row md:items-start">
         
@@ -48,11 +50,11 @@ const Footer = memo(() => {
         <div className="space-y-0 w-max">
           <Link 
             to="/" 
-            aria-label="Return to homepage" // ✅ ENHANCEMENT 2: Accessible logo link
+            aria-label="Return to homepage" 
           >
             <img 
               src={DarkLogo} 
-              alt="Blog Ideas & Stories - Dark Logo" // ✅ ENHANCEMENT 3: Descriptive alt text
+              alt="Blog Ideas & Stories - Dark Logo" 
               style={{ width: 'var(--logo-footer-w)', height: 'var(--logo-footer-h)' }} 
               className="object-contain"
             />
@@ -65,18 +67,20 @@ const Footer = memo(() => {
           </p>
         </div>
 
+
         {/* Mobile Divider */}
         <div 
           className="w-full h-px bg-linear-to-r sm:hidden from-transparent via-gray-700 to-transparent my-2" 
-          aria-hidden="true" // ✅ ENHANCEMENT 4: Hide decorative divider from screen readers
+          aria-hidden="true" 
         />
+
 
         {/* Footer Navigation Links */}
         <nav 
           className="grid grid-cols-3 gap-3 sm:gap-8 lg:gap-16"
-          aria-label="Footer navigation" // ✅ ENHANCEMENT 5: Accessible navigation label
+          aria-label="Footer navigation" 
         >
-          {FOOTER_SECTIONS.map((section) => ( // ✅ OPTIMIZATION 3: Use section.title as key
+          {FOOTER_SECTIONS.map((section) => (
             <div key={section.title}>
               <h4 
                 style={{ fontSize: 'var(--text-xs)' }} 
@@ -88,7 +92,7 @@ const Footer = memo(() => {
                 className="space-y-1.5 sm:space-y-2 text-gray-200" 
                 style={{ fontSize: 'var(--text-base)' }}
               >
-                {section.links.map((link) => ( // ✅ OPTIMIZATION 4: Use link.label as key
+                {section.links.map((link) => ( 
                   <li key={link.label}>
                     {link.isExternal ? (
                       <a 
@@ -96,7 +100,7 @@ const Footer = memo(() => {
                         href={link.to} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        aria-label={`${link.label} (opens in new tab)`} // ✅ ENHANCEMENT 6: Inform users link opens externally
+                        aria-label={`${link.label} (opens in new tab)`} 
                       >
                         {link.label}
                       </a>
@@ -104,7 +108,7 @@ const Footer = memo(() => {
                       <Link 
                         className="hover:text-indigo-300 transition-colors inline-block" 
                         to={link.to}
-                        aria-label={`Navigate to ${link.label}`} // ✅ ENHANCEMENT 7: Descriptive internal link label
+                        aria-label={`Navigate to ${link.label}`} 
                       >
                         {link.label}
                       </Link>
@@ -120,7 +124,8 @@ const Footer = memo(() => {
   );
 });
 
-// ✅ OPTIMIZATION 5: Add display name for React DevTools
+
+
 Footer.displayName = 'Footer';
 
 export default Footer;
