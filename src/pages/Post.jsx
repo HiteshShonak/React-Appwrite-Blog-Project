@@ -5,9 +5,9 @@ import appwriteService from "../appwrite/config";
 import { Button, Container } from "../Components";
 import parse from "html-react-parser";
 import { useSelector, useDispatch } from "react-redux";
-import { deletePost } from "../Store/postSlice";
-import { deleteUserPost } from "../Store/dashboardSlice";
-import { deleteTrendingPost } from "../Store/homeSlice";
+import { deletePost, updatePost } from "../Store/postSlice";
+import { deleteUserPost, updateUserPost } from "../Store/dashboardSlice";
+import { deleteTrendingPost, updateTrendingPost } from "../Store/homeSlice";
 import { cacheUserProfile } from "../Store/usersSlice";
 import { hasViewedCookie, setViewedCookie } from "../utils/cookieUtils";
 import Comments from "../Components/Comments";
@@ -139,20 +139,28 @@ export default function Post() {
         if (hasFetchedRef.current) return;
 
         const handleViewIncrement = async (currentPost) => {
-            if (currentPost.Views !== undefined && !viewIncrementedRef.current && !hasViewedCookie(currentPost.$id)) {
-                viewIncrementedRef.current = true;
-                setViewedCookie(currentPost.$id);
-                
-                try {
-                    const updatedPost = await appwriteService.incrementViews(currentPost.$id, currentPost.Views);
-                    if (updatedPost && isMountedRef.current) {
-                        setPost(prev => ({ ...prev, Views: updatedPost.Views }));
-                    }
-                } catch (error) {
-                    console.error("View increment failed", error);
-                }
+    if (currentPost.Views !== undefined && !viewIncrementedRef.current && !hasViewedCookie(currentPost.$id)) {
+        viewIncrementedRef.current = true;
+        setViewedCookie(currentPost.$id);
+        
+        try {
+            // ✅ Your incrementViews returns FULL post
+            const updatedPost = await appwriteService.incrementViews(currentPost.$id, currentPost.Views);
+            
+            if (updatedPost && isMountedRef.current) {
+                // ✅ Use full updatedPost everywhere
+                setPost(updatedPost);
+                dispatch(updatePost(updatedPost));
+                dispatch(updateUserPost(updatedPost));
+                dispatch(updateTrendingPost(updatedPost));
             }
-        };
+        } catch (error) {
+            console.error("View increment failed:", error);
+        }
+    }
+};
+
+
 
         const loadPost = async () => {
             if (cachedPost) {
