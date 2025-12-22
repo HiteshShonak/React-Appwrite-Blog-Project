@@ -8,37 +8,43 @@ import { setMultipleRatings } from '../Store/ratingSlice';
 import { Link } from 'react-router-dom';
 import { HomeSkeleton } from '../Components/Skeletons.jsx';
 
-
-const TrendingCard = React.memo(({ post, onClick }) => {
+const TrendingCard = React.memo(({ post, onClick, priority = false }) => {
     
     const cachedRating = useSelector((state) => state.ratings?.postRatings?.[post.$id]);
-    
     
     const displayRating = cachedRating && typeof cachedRating === 'object' 
         ? cachedRating.average 
         : cachedRating;
 
-    
-    const handleMouseEnter = useCallback(() => {
-        appwriteService.getPost(post.$id).catch(() => {
-            
-        });
-    }, [post.$id]);
+    // ✅ ADDED: Keyboard Accessibility (Enter/Space to open)
+    const handleKeyDown = useCallback((e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick(e, post.$id);
+        }
+    }, [onClick, post.$id]);
 
     return (
         <div 
             className="gpu-accelerate interactive w-72 md:w-80 mx-5 transform transition-transform duration-500 hover:scale-105 cursor-pointer text-left shadow-sm hover:shadow-xl rounded-xl z-10"
             onClick={(e) => onClick(e, post.$id)}
-            onMouseEnter={handleMouseEnter}
+            role="button"
+            tabIndex={0}
+            onKeyDown={handleKeyDown}
         >
             <div className="gpu-accelerate pointer-events-none bg-white rounded-xl h-full overflow-hidden border border-slate-100 relative group"> 
                 
-                <div className='w-full h-40 bg-slate-200 relative'>
+                {/* Explicit Aspect Ratio Container */}
+                <div className='w-full bg-slate-200 relative aspect-video'>
                     <img 
                         src={appwriteService.getFileView(post.featuredImage)} 
                         alt={post.Title} 
-                        className='w-full h-full object-cover' 
-                        loading="lazy"
+                        className='w-full h-full object-cover absolute inset-0' 
+                        loading={priority ? "eager" : "lazy"}
+                        fetchPriority={priority ? "high" : "auto"}
+                        decoding={priority ? "sync" : "async"}
+                        width="320"
+                        height="180"
                     />
                     
                     {displayRating !== null && displayRating > 0 && (
@@ -61,7 +67,8 @@ const TrendingCard = React.memo(({ post, onClick }) => {
     );
 }, (prevProps, nextProps) => {
     return prevProps.post.$id === nextProps.post.$id && 
-           prevProps.onClick === nextProps.onClick;
+           prevProps.onClick === nextProps.onClick &&
+           prevProps.priority === nextProps.priority;
 });
 
 TrendingCard.displayName = 'TrendingCard';
@@ -93,28 +100,21 @@ function Home() {
         }
 
         const initializeData = async () => {
-            // ✅ Layer 1: Check Redux Memory Cache FIRST
-            // This is the key performance boost. If we already fetched trending posts
-            // in this session, we DO NOT hit the API again.
             if (trending.length > 0) {
                 hasFetchedRef.current = true;
-                // You can add a silent background refresh logic here if needed, 
-                // but usually avoiding the call entirely is better for cost/performance.
                 return;
             }
 
             setLoading(true);
 
-            // ✅ Layer 2: Database Fetch (Only if Redux is empty)
             try {
+                // Limit to 6 posts
                 const trendingResponse = await appwriteService.getTrendingPosts(6);
 
                 if (!isMountedRef.current) return;
 
                 if (trendingResponse && trendingResponse.length > 0) {
                     
-                    // Filter posts that ACTUALLY need rating fetching
-                    // This prevents re-fetching ratings we already have in Redux
                     const postsNeedingRatings = trendingResponse.filter(post => 
                         cachedRatings[post.$id] === undefined
                     );
@@ -122,7 +122,6 @@ function Home() {
                     let ratingsMap = {};
                     
                     if (postsNeedingRatings.length > 0) {
-                        // Fetch missing ratings in parallel
                         const ratingsPromises = postsNeedingRatings.map(post => 
                             appwriteService.getPostRatings(post.$id)
                                 .then(data => {
@@ -130,7 +129,6 @@ function Home() {
                                         const total = data.documents.reduce((acc, curr) => acc + curr.stars, 0);
                                         const avg = parseFloat((total / data.documents.length).toFixed(1));
                                         
-                                        // ✅ FIX: Store as Object { average, count }
                                         return { 
                                             postId: post.$id, 
                                             rating: { average: avg, count: data.documents.length } 
@@ -151,13 +149,11 @@ function Home() {
                             }
                         });
 
-                        // Batch dispatch ratings to Redux
                         if (Object.keys(ratingsMap).length > 0) {
                             dispatch(setMultipleRatings(ratingsMap));
                         }
                     }
 
-                    // Batch dispatch posts to Redux
                     dispatch(setTrendingPosts(trendingResponse));
                 } else {
                     if (isMountedRef.current) {
@@ -181,7 +177,7 @@ function Home() {
         return () => {
             isMountedRef.current = false;
         };
-    }, [dispatch, cachedRatings, trending.length]); // Dependencies ensure this runs correctly
+    }, [dispatch, cachedRatings, trending.length]);
 
     const handleCardClick = useCallback((e, postId) => {
         e.preventDefault();
@@ -228,7 +224,8 @@ function Home() {
                                     <TrendingCard 
                                         key={`${post.$id}-${index}`} 
                                         post={post} 
-                                        onClick={handleCardClick} 
+                                        onClick={handleCardClick}
+                                        priority={index === 0} 
                                     />
                                 ))
                             ) : (
