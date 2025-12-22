@@ -1,4 +1,4 @@
-const COOKIE_EXPIRY_DAYS = 1; // 24 hours
+const COOKIE_EXPIRY_DAYS = 1; // 1 hours
 
 export const setViewedCookie = (postId) => {
     const name = `viewed_post_${postId}`;

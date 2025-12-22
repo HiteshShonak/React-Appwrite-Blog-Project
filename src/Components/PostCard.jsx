@@ -1,24 +1,42 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useRef, useEffect } from 'react';
 import appwriteService from '../appwrite/config.js';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 
 function PostCard({ $id, Title, featuredImage, priority = false }) {
-    // Memoized selector
-    const rating = useSelector(
-        (state) => state.ratings?.postRatings?.[$id] || null,
-        (prev, next) => prev === next
-    );
+    const prefetchedRef = useRef(false);
+    const hoverTimeoutRef = useRef(null);
 
-    // Prefetch post content on hover
+    // ✅ FIXED: Remove equality check for proper re-renders
+    const rating = useSelector((state) => state.ratings?.postRatings?.[$id] || null);
+
     const handleMouseEnter = useCallback(() => {
-        appwriteService.getPost($id).catch(() => {
-            // Silently fail
-        });
+        if (prefetchedRef.current) return;
+        if ('ontouchstart' in window) return;
+
+        hoverTimeoutRef.current = setTimeout(() => {
+            prefetchedRef.current = true;
+            appwriteService.getPost($id).catch(() => {
+                prefetchedRef.current = false;
+            });
+        }, 150);
     }, [$id]);
 
-    // ✅ Helper to safely extract the rating number
-    // Handles both legacy (number) and new (object) formats
+    const handleMouseLeave = useCallback(() => {
+        if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current);
+            hoverTimeoutRef.current = null;
+        }
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (hoverTimeoutRef.current) {
+                clearTimeout(hoverTimeoutRef.current);
+            }
+        };
+    }, []);
+
     const displayRating = rating && typeof rating === 'object' 
         ? rating.average 
         : rating;
@@ -28,6 +46,7 @@ function PostCard({ $id, Title, featuredImage, priority = false }) {
             to={`/post/${$id}`} 
             className="gpu-accelerate group block h-full"
             onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
         >
             <div className='gpu-accelerate bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg border border-gray-100 hover:border-gray-200 transition-all duration-300 h-full flex flex-col'>
                 
@@ -48,14 +67,13 @@ function PostCard({ $id, Title, featuredImage, priority = false }) {
                     
                     <div className="gpu-accelerate absolute inset-0 bg-linear-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
-                    {/* ✅ Only render if we have a valid rating */}
-                    {displayRating !== null && displayRating > 0 && (
+                    {displayRating != null && displayRating > 0 && (
                         <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-lg shadow-sm flex items-center gap-1 border border-gray-100 z-10">
                             <svg className="w-3.5 h-3.5 text-yellow-500 fill-current" viewBox="0 0 24 24">
                                 <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                             </svg>
                             <span className="text-xs font-bold text-gray-800">
-                                {Number(displayRating).toFixed(1)}
+                                {displayRating.toFixed(1)}
                             </span>
                         </div>
                     )}
@@ -77,6 +95,7 @@ export default memo(PostCard, (prevProps, nextProps) => {
     return (
         prevProps.$id === nextProps.$id &&
         prevProps.Title === nextProps.Title &&
-        prevProps.featuredImage === nextProps.featuredImage
+        prevProps.featuredImage === nextProps.featuredImage &&
+        prevProps.priority === nextProps.priority
     );
 });

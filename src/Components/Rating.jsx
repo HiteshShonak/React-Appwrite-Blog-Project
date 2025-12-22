@@ -2,10 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { createPortal } from 'react-dom';
 import appwriteService from '../appwrite/config';
-import { setMultipleRatings } from '../Store/ratingSlice';
+import { setMultipleRatings, setUserRating, removeUserRating, updateRatingOptimistic } from '../Store/ratingSlice';
 import { Link } from 'react-router-dom';
 
-// ✅ Calculate average rating on device
 const calculateAverageRating = (ratings) => {
     if (!ratings || ratings.length === 0) return 0;
     const total = ratings.reduce((acc, curr) => acc + curr.stars, 0);
@@ -22,21 +21,23 @@ function Rating({ postId, postAuthorId }) {
     }
 
     const [ratings, setRatings] = useState([]);
-    const [userRating, setUserRating] = useState(0);
-    const [ratingId, setRatingId] = useState(null);
     const [hover, setHover] = useState(0);
     const [submitting, setSubmitting] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     
     const userData = useSelector((state) => state.auth.userData);
+    const cachedRating = useSelector((state) => state.ratings.postRatings[postId]);
+    const cachedUserRating = useSelector((state) => state.ratings.userRatings[postId]);
     const dispatch = useDispatch();
+
+    const userRating = cachedUserRating?.stars || 0;
+    const ratingId = cachedUserRating?.ratingId || null;
 
     const isAuthor = useMemo(() => 
         userData && postAuthorId && userData.$id === postAuthorId,
         [userData, postAuthorId]
     );
 
-    // ✅ Fetch ratings once on mount
     useEffect(() => {
         let isCancelled = false;
         
@@ -46,9 +47,24 @@ function Rating({ postId, postAuthorId }) {
                 if (data?.documents && !isCancelled) {
                     setRatings(data.documents);
                     
-                    // ✅ Store in Redux for PostCard display only
                     const avgRating = calculateAverageRating(data.documents);
-                    dispatch(setMultipleRatings({ [postId]: avgRating }));
+                    dispatch(setMultipleRatings({ 
+                        [postId]: { 
+                            average: avgRating, 
+                            count: data.documents.length 
+                        } 
+                    }));
+
+                    if (userData) {
+                        const myRating = data.documents.find(r => r.userId === userData.$id);
+                        if (myRating) {
+                            dispatch(setUserRating({
+                                postId,
+                                stars: myRating.stars,
+                                ratingId: myRating.$id
+                            }));
+                        }
+                    }
                 }
             } catch (error) {
                 if (!isCancelled) {
@@ -62,99 +78,115 @@ function Rating({ postId, postAuthorId }) {
         return () => {
             isCancelled = true;
         };
-    }, [postId, dispatch]);
-
-    // ✅ Extract user's rating from fetched data
-    useEffect(() => {
-        if (!userData) {
-            setUserRating(0);
-            setRatingId(null);
-            return;
-        }
-
-        if (ratings.length === 0) {
-            setUserRating(0);
-            setRatingId(null);
-            return;
-        }
-
-        const myRating = ratings.find(r => r.userId === userData.$id);
-        if (myRating) {
-            setUserRating(myRating.stars);
-            setRatingId(myRating.$id);
-        } else {
-            setUserRating(0);
-            setRatingId(null);
-        }
-    }, [userData, ratings]);
+    }, [postId, dispatch, userData]);
 
     useEffect(() => {
         document.body.style.overflow = isDeleteModalOpen ? 'hidden' : 'unset';
         return () => { document.body.style.overflow = 'unset'; };
     }, [isDeleteModalOpen]);
 
-    // ✅ Calculate average on device (not from Redux cache)
-    const averageRating = useMemo(() => 
-        calculateAverageRating(ratings),
-        [ratings]
-    );
+    const averageRating = cachedRating?.average || calculateAverageRating(ratings);
+    const voteCount = cachedRating?.count || ratings.length;
 
-    // ✅ Handle rating - optimistic update + real fetch
     const handleRate = useCallback(async (stars) => {
         if (!userData || submitting || isAuthor) return;
         setSubmitting(true);
-        const previousRatings = [...ratings];
-        const previousUserRating = userRating;
+
+        const oldUserStars = userRating;
         
-        // Optimistic update
-        setUserRating(stars);
-        const existingIndex = ratings.findIndex(r => r.userId === userData.$id);
-        let newRatingsList;
-        if (existingIndex !== -1) {
-            newRatingsList = [...ratings];
-            newRatingsList[existingIndex] = { ...newRatingsList[existingIndex], stars: stars };
-        } else {
-            newRatingsList = [...ratings, { userId: userData.$id, stars: stars, $id: 'temp' }];
-        }
-        setRatings(newRatingsList);
+        dispatch(updateRatingOptimistic({
+            postId,
+            newUserStars: stars,
+            oldUserStars: oldUserStars
+        }));
+
+        dispatch(setUserRating({
+            postId,
+            stars: stars,
+            ratingId: ratingId || 'temp'
+        }));
 
         try {
-            // ✅ Send user's rating to Appwrite
             await appwriteService.setRating({ postId, userId: userData.$id, stars });
             
-            // ✅ Fetch fresh data to get accurate count + average
             const freshData = await appwriteService.getPostRatings(postId);
             if (freshData?.documents) {
                 setRatings(freshData.documents);
                 
                 const newAverage = calculateAverageRating(freshData.documents);
-                dispatch(setMultipleRatings({ [postId]: newAverage }));
+                dispatch(setMultipleRatings({ 
+                    [postId]: { 
+                        average: newAverage, 
+                        count: freshData.documents.length 
+                    } 
+                }));
                 
                 const myRating = freshData.documents.find(r => r.userId === userData.$id);
                 if (myRating) {
-                    setUserRating(myRating.stars);
-                    setRatingId(myRating.$id);
+                    dispatch(setUserRating({
+                        postId,
+                        stars: myRating.stars,
+                        ratingId: myRating.$id
+                    }));
                 }
             }
         } catch (error) {
             console.error("Rating failed:", error);
-            setRatings(previousRatings);
-            setUserRating(previousUserRating);
+            
+            try {
+                const freshData = await appwriteService.getPostRatings(postId);
+                if (freshData?.documents) {
+                    setRatings(freshData.documents);
+                    
+                    const newAverage = calculateAverageRating(freshData.documents);
+                    dispatch(setMultipleRatings({ 
+                        [postId]: { 
+                            average: newAverage, 
+                            count: freshData.documents.length 
+                        } 
+                    }));
+
+                    const myRating = freshData.documents.find(r => r.userId === userData.$id);
+                    if (myRating) {
+                        dispatch(setUserRating({
+                            postId,
+                            stars: myRating.stars,
+                            ratingId: myRating.$id
+                        }));
+                    } else {
+                        dispatch(removeUserRating(postId));
+                    }
+                }
+            } catch (rollbackError) {
+                console.error("Rollback failed:", rollbackError);
+            }
         } finally {
             setSubmitting(false);
         }
-    }, [userData, submitting, isAuthor, ratings, userRating, postId, dispatch]);
+    }, [userData, submitting, isAuthor, userRating, ratingId, postId, dispatch]);
 
-    // ✅ Delete rating
     const confirmDelete = useCallback(async () => {
+        if (!ratingId || ratingId === 'temp') return;
+        
         setSubmitting(true);
         setIsDeleteModalOpen(false);
-        const previousRatings = [...ratings];
-        const previousUserRating = userRating;
 
-        setUserRating(0);
-        setRatingId(null);
-        setRatings(prev => prev.filter(r => r.userId !== userData.$id));
+        const oldStars = userRating;
+        const currentRating = cachedRating;
+        
+        if (currentRating && currentRating.count > 1) {
+            const newCount = currentRating.count - 1;
+            const newAverage = parseFloat(((currentRating.average * currentRating.count - oldStars) / newCount).toFixed(1));
+            dispatch(setMultipleRatings({
+                [postId]: { average: newAverage, count: newCount }
+            }));
+        } else {
+            dispatch(setMultipleRatings({
+                [postId]: { average: 0, count: 0 }
+            }));
+        }
+
+        dispatch(removeUserRating(postId));
 
         try {
             await appwriteService.deleteRating(ratingId);
@@ -164,17 +196,45 @@ function Rating({ postId, postAuthorId }) {
                 setRatings(freshData.documents);
                 
                 const newAverage = calculateAverageRating(freshData.documents);
-                dispatch(setMultipleRatings({ [postId]: newAverage }));
+                dispatch(setMultipleRatings({ 
+                    [postId]: { 
+                        average: newAverage, 
+                        count: freshData.documents.length 
+                    } 
+                }));
             }
         } catch (error) {
             console.error("Delete failed:", error);
-            setRatings(previousRatings);
-            setUserRating(previousUserRating);
-            setRatingId(ratingId);
+            
+            try {
+                const freshData = await appwriteService.getPostRatings(postId);
+                if (freshData?.documents) {
+                    setRatings(freshData.documents);
+                    
+                    const newAverage = calculateAverageRating(freshData.documents);
+                    dispatch(setMultipleRatings({ 
+                        [postId]: { 
+                            average: newAverage, 
+                            count: freshData.documents.length 
+                        } 
+                    }));
+
+                    const myRating = freshData.documents.find(r => r.userId === userData.$id);
+                    if (myRating) {
+                        dispatch(setUserRating({
+                            postId,
+                            stars: myRating.stars,
+                            ratingId: myRating.$id
+                        }));
+                    }
+                }
+            } catch (rollbackError) {
+                console.error("Rollback failed:", rollbackError);
+            }
         } finally {
             setSubmitting(false);
         }
-    }, [ratings, userRating, userData, ratingId, postId, dispatch]);
+    }, [userRating, ratingId, postId, dispatch, cachedRating, userData]);
 
     return (
         <>
@@ -195,7 +255,7 @@ function Rating({ postId, postAuthorId }) {
                             {isAuthor ? "Your Post's Rating" : (userRating > 0 ? "Thanks for rating!" : "Rate this story")}
                         </h3>
                         <p className="text-sm text-slate-500">
-                            {ratings.length} {ratings.length === 1 ? 'vote' : 'votes'} so far
+                            {voteCount} {voteCount === 1 ? 'vote' : 'votes'} so far
                         </p>
                     </div>
                 </div>

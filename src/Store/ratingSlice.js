@@ -6,7 +6,7 @@ const ratingSlice = createSlice({
         // { postId: { average: 4.5, count: 23 } }
         postRatings: {},
         
-        // { postId: { rating: 4, ratingId: "abc123" } }
+        // { postId: { stars: 4, ratingId: "abc123" } }
         userRatings: {}
     },
     reducers: {
@@ -19,11 +19,39 @@ const ratingSlice = createSlice({
             state.postRatings = { ...state.postRatings, ...action.payload };
         },
         setUserRating: (state, action) => {
-            const { postId, rating, ratingId } = action.payload;
-            state.userRatings[postId] = { rating, ratingId };
+            const { postId, stars, ratingId } = action.payload;
+            state.userRatings[postId] = { stars, ratingId };
         },
         removeUserRating: (state, action) => {
             delete state.userRatings[action.payload];
+        },
+        // ✅ NEW: Optimistic update for instant UI feedback
+        updateRatingOptimistic: (state, action) => {
+            const { postId, newUserStars, oldUserStars } = action.payload;
+            
+            const currentRating = state.postRatings[postId];
+            
+            if (!currentRating) {
+                // First rating ever for this post
+                state.postRatings[postId] = { average: newUserStars, count: 1 };
+                return;
+            }
+            
+            const { average, count } = currentRating;
+            
+            let newAverage, newCount;
+            
+            if (oldUserStars === 0) {
+                // User is adding a NEW rating
+                newCount = count + 1;
+                newAverage = parseFloat(((average * count + newUserStars) / newCount).toFixed(1));
+            } else {
+                // User is UPDATING existing rating
+                newCount = count;
+                newAverage = parseFloat(((average * count - oldUserStars + newUserStars) / count).toFixed(1));
+            }
+            
+            state.postRatings[postId] = { average: newAverage, count: newCount };
         },
         clearRatings: (state) => {
             state.postRatings = {};
@@ -37,6 +65,7 @@ export const {
     setMultipleRatings, 
     setUserRating, 
     removeUserRating, 
+    updateRatingOptimistic,
     clearRatings 
 } = ratingSlice.actions;
 
