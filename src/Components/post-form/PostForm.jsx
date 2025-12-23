@@ -11,7 +11,7 @@ import { addPost, updatePost } from '../../Store/postSlice';
 import { addUserPost, updateUserPost } from '../../Store/dashboardSlice';
 import { updateTrendingPost } from '../../Store/homeSlice';
 import ImageCropper from '../ImageCropper.jsx';
-import { EditorLoader } from '../Skeletons.jsx';
+import {EditorLoader} from '../Skeletons.jsx';
 
 // ✅ SMART CACHE MANAGER: Updates localStorage directly to prevent API calls
 const updateDashboardCache = (action, post) => {
@@ -374,6 +374,12 @@ function PostForm({ post }) {
         };
     }, []);
 
+    // LOGIC FOR LOADER STATE
+    let loaderType = 'init';
+    if (submitting) {
+        loaderType = isEditMode ? 'update' : 'publish';
+    }
+
     return (
         <>
             {isCropperOpen && (
@@ -388,8 +394,9 @@ function PostForm({ post }) {
                 />
             )}
 
+            {/* UPDATED LOADER IMPLEMENTATION */}
             {isLoading && createPortal(
-                EditorLoader(),
+                <EditorLoader type={loaderType} />,
                 document.body
             )}
 

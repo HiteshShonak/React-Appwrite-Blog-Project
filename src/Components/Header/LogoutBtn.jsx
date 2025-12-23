@@ -17,6 +17,13 @@ const LogoutBtn = memo(({ className = "" }) => {
     const modalRef = useRef(null);
     const previousFocusRef = useRef(null);
 
+    // ✅ Add this to lock scroll when Modal OR Loader is active
+    useEffect(() => {
+        const shouldLock = showConfirmModal || isLoggingOut;
+        document.body.style.overflow = shouldLock ? 'hidden' : 'unset';
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [showConfirmModal, isLoggingOut]);
+
     useEffect(() => {
         isMountedRef.current = true;
         return () => {
