@@ -25,7 +25,6 @@ function ImageCropper({
         };
     }, []);
 
-    // Scroll lock WITHOUT layout shift
     useEffect(() => {
         const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
         
@@ -94,7 +93,6 @@ function ImageCropper({
                 className={`gpu-accelerate bg-white w-full rounded-2xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 modal-scale-animation ${aspect > 1 ? 'max-w-2xl h-[65vh]' : 'max-w-md h-125'}`}
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Header */}
                 <div className="p-4 border-b border-slate-100 flex justify-between items-center z-10 bg-white">
                     <h3 id="cropper-title" className="font-bold text-slate-800">{title}</h3>
                     <button 
@@ -110,7 +108,6 @@ function ImageCropper({
                     </button>
                 </div>
 
-                {/* Cropper Area */}
                 <div className="relative flex-1 bg-slate-900">
                     <Cropper
                         image={imageSrc}
@@ -125,7 +122,6 @@ function ImageCropper({
                     />
                 </div>
 
-                {/* Footer Controls */}
                 <div className="p-6 bg-white space-y-4 z-10">
                     <div className="flex items-center gap-4">
                         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Zoom</span>

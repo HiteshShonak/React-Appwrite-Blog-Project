@@ -10,7 +10,6 @@ function AboutUs() {
             <Container>
                 <div className="max-w-4xl mx-auto">
                    
-                    {/* Hero section */}
                     <div className="text-center mb-16">
                         <div className="inline-block p-3 bg-blue-50 text-blue-600 rounded-2xl mb-6">
                             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -26,7 +25,6 @@ function AboutUs() {
                         </p>
                     </div>
 
-                    {/* Mission card */}
                     <div className="gpu-accelerate bg-white rounded-3xl shadow-sm border border-slate-100 p-8 md:p-12 mb-12">
                         <div className="flex flex-col md:flex-row items-center gap-10">
                             <div className="flex-1">
@@ -48,7 +46,6 @@ function AboutUs() {
                         </div>
                     </div>
 
-                    {/* Values grid */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
                         <div className="gpu-accelerate bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                             <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-4">
@@ -87,7 +84,6 @@ function AboutUs() {
                         </div>
                     </div>
 
-                    {/* CTA section */}
                     <div className="gpu-accelerate bg-slate-900 rounded-3xl p-8 md:p-12 text-center text-white relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-full opacity-10">
                             <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">

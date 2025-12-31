@@ -30,7 +30,6 @@ const authSlice = createSlice({
             state.status = true;
             state.userData = action.payload.userData;
             
-            // Save to localStorage
             localStorage.setItem('authStatus', 'true');
             localStorage.setItem('userData', JSON.stringify(action.payload.userData));
         },
@@ -38,7 +37,6 @@ const authSlice = createSlice({
             state.status = false;
             state.userData = null;
             
-            // Clear from localStorage
             localStorage.removeItem('authStatus');
             localStorage.removeItem('userData');
         }

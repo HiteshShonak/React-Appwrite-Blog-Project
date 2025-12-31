@@ -46,7 +46,6 @@ const Footer = memo(() => {
     >
       <div className="flex justify-between user-select-none user-drag-none px-3 sm:px-6 py-3 sm:py-6 flex-col gap-0 sm:flex-row md:items-start">
         
-        {/* Logo & Copyright Section */}
         <div className="space-y-0 w-max">
           <Link 
             to="/" 
@@ -68,14 +67,12 @@ const Footer = memo(() => {
         </div>
 
 
-        {/* Mobile Divider */}
         <div 
           className="w-full h-px bg-linear-to-r sm:hidden from-transparent via-gray-700 to-transparent my-2" 
           aria-hidden="true" 
         />
 
 
-        {/* Footer Navigation Links */}
         <nav 
           className="grid grid-cols-3 gap-3 sm:gap-8 lg:gap-16"
           aria-label="Footer navigation" 

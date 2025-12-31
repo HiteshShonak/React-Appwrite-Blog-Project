@@ -4,12 +4,11 @@ import { Controller } from 'react-hook-form';
 
 
 export default function RTE({ name, control, label, defaultValue = "" }) {
-    // Memoized editor configuration
+    
     const editorConfig = useMemo(() => ({
         height: 500,
         menubar: true,
         
-        // Remove branding and promotions
         branding: false,
         promotion: false,
         
@@ -19,20 +18,16 @@ export default function RTE({ name, control, label, defaultValue = "" }) {
             "insertdatetime", "media", "table", "help", "wordcount"
         ],
         
-        // Desktop toolbar - original structure
         toolbar:
             "undo redo | blocks | image | bold italic forecolor | alignleft aligncenter alignright alignjustify | " +
             "bullist numlist outdent indent | removeformat | help | link",
         
-        // Toolbar mode - sliding drawer for overflow items
         toolbar_mode: 'sliding',
         
-        // Mobile-specific configuration
         mobile: {
             menubar: false,
             toolbar_mode: 'scrolling',
             
-            // Simplified toolbar for mobile - essential tools
             toolbar:
                 "undo redo | bold italic | alignleft aligncenter | bullist numlist | link image | more",
             
@@ -55,7 +50,6 @@ export default function RTE({ name, control, label, defaultValue = "" }) {
             }
         `,
         
-        // Better mobile experience
         contextmenu: false,
         
     }), []);
@@ -85,7 +79,6 @@ export default function RTE({ name, control, label, defaultValue = "" }) {
                 )}
             />
 
-            {/* Hide branding and promotional elements */}
             <style jsx global>{`
                 /* Hide TinyMCE branding */
                 .tox-promotion,

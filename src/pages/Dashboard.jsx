@@ -10,7 +10,7 @@ import ProfilePictureManager from '../Components/ProfilePictureManager';
 import BioEditModal from '../Components/BioEditModal';
 import { DashboardAuthSkeleton } from '../Components/Skeletons.jsx';
 
-// ✅ Dashboard Cache Keys (Kept as per requirements)
+
 const DASHBOARD_CACHE = {
     POSTS: 'dashboard_user_posts',
     PROFILE: 'dashboard_user_profile',
@@ -19,7 +19,7 @@ const DASHBOARD_CACHE = {
     TIMESTAMP: 'dashboard_cache_timestamp'
 };
 
-const CACHE_DURATION = 15 * 60 * 1000; // 15 Minutes
+const CACHE_DURATION = 15 * 60 * 1000; 
 
 const isDashboardCacheValid = (userId) => {
     try {
@@ -75,7 +75,7 @@ const saveDashboardCache = (userId, posts, profile, ratings) => {
     } catch (error) {
         console.error('Error saving dashboard cache:', error);
         clearDashboardCache();
-        // Retry once
+        
         try {
             localStorage.setItem(DASHBOARD_CACHE.POSTS, JSON.stringify(posts));
             localStorage.setItem(DASHBOARD_CACHE.PROFILE, JSON.stringify(profile));
@@ -176,7 +176,6 @@ function Dashboard() {
         postCount: posts.length
     }), [posts]);
 
-    // ✅ OPTIMIZED: Return full rating object { average, count }
     const prefetchRatings = useCallback(async (postsList) => {
         if (!postsList || postsList.length === 0) return {};
         if (!isMountedRef.current) return {};
@@ -197,7 +196,6 @@ function Dashboard() {
                             const total = data.documents.reduce((acc, curr) => acc + curr.stars, 0);
                             const avg = parseFloat((total / data.documents.length).toFixed(1));
                             
-                            // ✅ FIX: Match Redux structure
                             return { 
                                 postId: post.$id, 
                                 rating: { average: avg, count: data.documents.length } 
@@ -245,7 +243,6 @@ function Dashboard() {
         const loadDashboardData = async () => {
             setLoading(true);
 
-            // Layer 1: Check LocalStorage (Dashboard only)
             const cachedData = getDashboardCache(currentUserId);
             
             if (cachedData) {
@@ -262,7 +259,6 @@ function Dashboard() {
                 return;
             }
 
-            // Layer 2: Fetch Fresh from Appwrite
             try {
                 const [profileRes, postsRes] = await Promise.all([
                     appwriteService.getUserProfile(currentUserId),
@@ -288,7 +284,6 @@ function Dashboard() {
 
                 if (!isMountedRef.current) return;
 
-                // Save to Cache
                 saveDashboardCache(currentUserId, userPosts, profileData, ratingsMap);
 
                 dispatch(setUserProfile(profileData));
@@ -301,7 +296,6 @@ function Dashboard() {
                 
                 console.error("Error fetching dashboard data:", error);
                 
-                // Fallback: Try Stale Cache if network fails
                 try {
                     const staleCache = localStorage.getItem(DASHBOARD_CACHE.POSTS);
                     const staleProfile = localStorage.getItem(DASHBOARD_CACHE.PROFILE);
@@ -404,7 +398,6 @@ function Dashboard() {
     }, [username, cachedProfile.profileImageId, currentUserId, dispatch]);
 
     if (!authStatus) {
-        // ... (Keep existing unauthorized view JSX)
         return (
             <div className='w-full min-h-screen bg-slate-50 py-12 sm:py-20 relative overflow-hidden page-anim px-2 sm:px-4'>
                 <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
@@ -479,7 +472,6 @@ function Dashboard() {
             />
 
             <Container>
-                {/* Profile Header */}
                 <div className="gpu-accelerate bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 mb-6 sm:mb-8 flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4">
                     
                     <div className="flex items-center gap-3 sm:gap-5 w-full md:w-auto">
@@ -519,7 +511,6 @@ function Dashboard() {
                     </div>
                 </div>
 
-                {/* Stats Section */}
                 <div className="flex items-end justify-between mb-4 sm:mb-6">
                     <div>
                         <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Overview</h2>
@@ -544,7 +535,6 @@ function Dashboard() {
                     ))}
                 </div>
 
-                {/* Posts Section */}
                 <div className="space-y-8 sm:space-y-12">
                     {draftPosts.length > 0 && (
                         <div>

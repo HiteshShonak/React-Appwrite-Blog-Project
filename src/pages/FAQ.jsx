@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Container } from '../Components/index.js';
 import { Link } from 'react-router-dom';
 
-// Collapsible FAQ item component with professional animations
 const FaqItem = ({ question, answer, index }) => {
     const [isOpen, setIsOpen] = useState(false);
 
@@ -44,7 +43,6 @@ const FaqItem = ({ question, answer, index }) => {
 
 function FAQ() {
     
-    // FAQ data grouped by category
     const faqData = [
         {
             category: "Getting Started & Accounts",
@@ -122,7 +120,6 @@ function FAQ() {
             <Container>
                 <div className="max-w-4xl mx-auto">
                     
-                    {/* Page header */}
                     <header className="text-center mb-12 faq-header">
                         <h1 className="text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
                             Frequently Asked Questions
@@ -132,7 +129,6 @@ function FAQ() {
                         </p>
                     </header>
 
-                    {/* FAQ sections */}
                     <div className="faq-container bg-white rounded-3xl shadow-xl border border-slate-100 p-8 md:p-12 space-y-8">
                         {faqData.map((section, sectionIndex) => (
                             <section 
@@ -160,7 +156,6 @@ function FAQ() {
                         ))}
                     </div>
 
-                    {/* Contact support CTA */}
                     <div className="faq-cta mt-12 text-center bg-indigo-50 p-8 rounded-2xl border border-indigo-200">
                         <p className="text-xl font-semibold text-indigo-700 mb-4">
                             Still need help?

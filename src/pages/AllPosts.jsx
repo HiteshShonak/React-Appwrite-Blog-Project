@@ -9,7 +9,7 @@ import { AllPostsSkeleton } from '../Components/Skeletons.jsx';
 function AllPosts() {
     const posts = useSelector((state) => state.posts.posts);
     const cachedRatings = useSelector((state) => state.ratings.postRatings);
-    const userData = useSelector((state) => state.auth.userData); // ✅ NEW
+    const userData = useSelector((state) => state.auth.userData);
     const dispatch = useDispatch();
 
     const [loading, setLoading] = useState(false);
@@ -18,21 +18,17 @@ function AllPosts() {
 
     const postCount = posts.length;
 
-    // ✅ ENHANCED: Prefetch ratings + user's own rating
     const prefetchRatings = useCallback(async (postsList) => {
         if (!postsList || postsList.length === 0) return {};
         if (!isMountedRef.current) return {};
         
         try {
-            // Filter posts that don't have ratings in Redux cache
             const postsNeedingRatings = postsList.filter(post => cachedRatings[post.$id] === undefined);
             
-            // If all ratings are cached, return cached data
             if (postsNeedingRatings.length === 0) {
                 return cachedRatings;
             }
             
-            // ✅ Fetch ratings for all posts in parallel
             const ratingsPromises = postsNeedingRatings.map(post => 
                 appwriteService.getPostRatings(post.$id)
                     .then(data => {
@@ -41,7 +37,6 @@ function AllPosts() {
                             const avg = parseFloat((total / data.documents.length).toFixed(1));
                             const count = data.documents.length;
                             
-                            // ✅ Find current user's rating if logged in
                             let userRatingData = null;
                             if (userData) {
                                 const userRatingDoc = data.documents.find(r => r.userId === userData.$id);
@@ -72,17 +67,14 @@ function AllPosts() {
             const newRatingsMap = {};
             results.forEach(result => {
                 if (result) {
-                    // Store post rating (average + count)
                     newRatingsMap[result.postId] = result.rating;
                     
-                    // ✅ Store user's own rating if exists
                     if (result.userRating) {
                         dispatch(setUserRating(result.userRating));
                     }
                 }
             });
 
-            // Dispatch post ratings
             if (Object.keys(newRatingsMap).length > 0) {
                 dispatch(setMultipleRatings(newRatingsMap));
             }
@@ -92,9 +84,8 @@ function AllPosts() {
             console.error("Error prefetching ratings:", error);
             return cachedRatings;
         }
-    }, [dispatch, cachedRatings, userData]); // ✅ Added userData
+    }, [dispatch, cachedRatings, userData]); 
 
-    // Simplified Caching: Redux (Layer 1) -> Database (Layer 2)
     useEffect(() => {
         isMountedRef.current = true;
 
@@ -103,7 +94,6 @@ function AllPosts() {
         }
 
         const fetchData = async () => {
-            // Layer 1: Check Redux cache
             if (posts.length > 0) {
                 hasFetchedRef.current = true;
                 return;
@@ -111,7 +101,6 @@ function AllPosts() {
 
             setLoading(true);
 
-            // Layer 2: Fetch from database
             try {
                 const response = await appwriteService.getPosts();
                 
@@ -174,7 +163,7 @@ function AllPosts() {
                     <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6'>
                         {posts.map((post, index) => (
                             <div key={post.$id} className="h-full">
-                                <PostCard {...post} priority={index < 2} />
+                                <PostCard {...post} priority={index < 4} />
                             </div>
                         ))}
                     </div>

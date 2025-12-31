@@ -14,7 +14,6 @@ import Comments from "../Components/Comments";
 import Rating from "../Components/Rating.jsx";
 import { PostSkeleton } from "../Components/Skeletons.jsx";
 
-// ✅ Helper to update dashboard cache (Remove item)
 const removePostFromDashboardCache = (postId) => {
     try {
         const cacheKey = 'dashboard_user_posts';
@@ -26,7 +25,6 @@ const removePostFromDashboardCache = (postId) => {
         const updatedPosts = posts.filter(p => p.$id !== postId);
 
         localStorage.setItem(cacheKey, JSON.stringify(updatedPosts));
-        console.log('✅ Dashboard cache updated (delete) - No API fetch required.');
     } catch (error) {
         console.error("Manual cache update failed:", error);
     }
@@ -144,11 +142,9 @@ export default function Post() {
         setViewedCookie(currentPost.$id);
         
         try {
-            // ✅ Your incrementViews returns FULL post
             const updatedPost = await appwriteService.incrementViews(currentPost.$id, currentPost.Views);
             
             if (updatedPost && isMountedRef.current) {
-                // ✅ Use full updatedPost everywhere
                 setPost(updatedPost);
                 dispatch(updatePost(updatedPost));
                 dispatch(updateUserPost(updatedPost));
@@ -159,8 +155,6 @@ export default function Post() {
         }
     }
 };
-
-
 
         const loadPost = async () => {
             if (cachedPost) {

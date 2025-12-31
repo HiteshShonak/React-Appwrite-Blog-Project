@@ -17,7 +17,6 @@ const LogoutBtn = memo(({ className = "" }) => {
     const modalRef = useRef(null);
     const previousFocusRef = useRef(null);
 
-    // ✅ Add this to lock scroll when Modal OR Loader is active
     useEffect(() => {
         const shouldLock = showConfirmModal || isLoggingOut;
         document.body.style.overflow = shouldLock ? 'hidden' : 'unset';
@@ -90,7 +89,6 @@ const LogoutBtn = memo(({ className = "" }) => {
         setShowConfirmModal(false);
     }, []);
 
-    // ✅ UPDATED: Enhanced logout with proper localStorage cleanup
     const handleConfirmLogout = useCallback(async () => {
         setShowConfirmModal(false);
         setIsLoggingOut(true);
@@ -100,11 +98,9 @@ const LogoutBtn = memo(({ className = "" }) => {
             
             if (!isMountedRef.current) return;
             
-            // ✅ Dispatch logout (clears authStatus + userData via authSlice)
             dispatch(logout()); 
             dispatch(resetDashboard()); 
             
-            // ✅ Clear all app-specific cache from localStorage
             try {
                 const keysToRemove = Object.keys(localStorage).filter(key => 
                     key.includes('cache') || 
@@ -116,7 +112,6 @@ const LogoutBtn = memo(({ className = "" }) => {
                 );
                 keysToRemove.forEach(key => localStorage.removeItem(key));
                 
-                // ✅ NEW: Ensure auth keys are cleared (redundant but safe)
                 localStorage.removeItem('authStatus');
                 localStorage.removeItem('userData');
             } catch (error) {
@@ -138,7 +133,6 @@ const LogoutBtn = memo(({ className = "" }) => {
 
     return (
         <>
-            {/* CONFIRMATION MODAL */}
             {showConfirmModal && createPortal(
                 <div 
                     className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm modal-backdrop-animation"
@@ -196,7 +190,6 @@ const LogoutBtn = memo(({ className = "" }) => {
                 document.body
             )}
 
-            {/* LOADING SPINNER */}
             {isLoggingOut && createPortal(
                 <div 
                     className="fixed inset-0 z-9999 flex items-center justify-center bg-slate-900/80 backdrop-blur-md transition-all duration-300"
@@ -227,7 +220,6 @@ const LogoutBtn = memo(({ className = "" }) => {
                 document.body
             )}
 
-            {/* TRIGGER BUTTON */}
             <button 
                 onClick={handleLogoutClick}
                 disabled={isLoggingOut}

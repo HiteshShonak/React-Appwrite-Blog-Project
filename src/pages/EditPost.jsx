@@ -9,7 +9,7 @@ function EditPost() {
     const [post, setPost] = useState(null);
     const { slug } = useParams();
     const navigate = useNavigate();
-    const isMountedRef = useRef(true); // ✅ Track mount status
+    const isMountedRef = useRef(true); 
 
     useEffect(() => {
         isMountedRef.current = true;
@@ -19,10 +19,9 @@ function EditPost() {
             return;
         }
 
-        // ✅ Fetch with error handling and abort checks
         appwriteService.getPost(slug)
             .then((post) => {
-                if (!isMountedRef.current) return; // ✅ Abort if unmounted
+                if (!isMountedRef.current) return; 
                 
                 if (post) {
                     setPost(post);
@@ -33,11 +32,10 @@ function EditPost() {
             .catch((error) => {
                 console.error('Error fetching post:', error);
                 if (isMountedRef.current) {
-                    navigate('/'); // ✅ Redirect on error
+                    navigate('/'); 
                 }
             });
 
-        // ✅ Cleanup function
         return () => {
             isMountedRef.current = false;
         };

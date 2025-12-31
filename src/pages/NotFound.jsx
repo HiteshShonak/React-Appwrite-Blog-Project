@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Container } from '../Components/index.js'; // Ensure correct import path
+import { Container } from '../Components/index.js';
 
 function NotFound() {
   return (
@@ -8,7 +8,6 @@ function NotFound() {
       <Container>
         <div className="gpu-accelerate text-center p-8 bg-white rounded-3xl shadow-xl border border-slate-100 max-w-2xl mx-auto">
           
-          {/* Error Code and Icon */}
           <h1 className="text-9xl font-extrabold text-indigo-600 mb-4 tracking-tighter">
             404
           </h1>
@@ -26,7 +25,6 @@ function NotFound() {
             Oops! The content you are looking for seems to have disappeared or the link is incorrect.
           </p>
 
-          {/* Navigation Options */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/" className="w-full sm:w-auto">
               <button className="w-full px-8 py-3.5 text-base font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-lg transition-all hover:-translate-y-0.5">

@@ -9,7 +9,6 @@ function Contact() {
     const [notification, setNotification] = useState({ message: "", type: "" });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // ✅ Memoize EmailJS credentials (read once)
     const emailConfig = useMemo(() => ({
         serviceId: import.meta.env.VITE_EMAILJS_SERVICE_ID,
         templateId: import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
@@ -17,7 +16,6 @@ function Contact() {
     }), []);
 
 
-    // ✅ Memoized submit handler
     const submit = useCallback(async (data) => {
         setNotification({ message: "", type: "" });
         setIsSubmitting(true);
@@ -48,7 +46,6 @@ function Contact() {
         }
     }, [emailConfig, reset]);
 
-    // Auto-hide notification after 3 seconds
     useEffect(() => {
         if (notification.message) {
             const timer = setTimeout(() => setNotification({ message: "", type: "" }), 3000);
@@ -59,9 +56,8 @@ function Contact() {
     return (
         <div className='w-full min-h-screen bg-slate-50 py-12 relative page-anim px-2 sm:px-4'>
             
-            {/* Notification toast */}
             {notification.message && (
-                <div className='gpu-accelerate fixed top-24 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-sm px-4 pointer-events-none'>
+                <div className='gpu-accelerate fixed top-6 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-sm px-4 pointer-events-none'>
                     <div className={`gpu-accelerate
                         px-6 py-3 rounded-lg shadow-xl animate-bounce flex items-center justify-center gap-2
                         ${notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}
@@ -74,7 +70,6 @@ function Contact() {
             <Container>
                 <div className="max-w-5xl mx-auto flex flex-col md:flex-row gap-10 items-start">
                     
-                    {/* Contact information */}
                     <div className="w-full md:w-1/3 pt-4 space-y-6">
                         <div>
                             <h2 className="text-3xl font-extrabold text-slate-900">Get in touch</h2>
@@ -95,7 +90,6 @@ function Contact() {
                         </div>
                     </div>
 
-                    {/* Contact form */}
                     <div className="gpu-accelerate w-full md:w-2/3 bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
                         <form onSubmit={handleSubmit(submit)} className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

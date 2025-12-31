@@ -45,7 +45,6 @@ export class Service {
     }
 
     // Updates an existing post by its slug
-    // Updates an existing post by its slug
     async updatePost(slug, { title, content, featuredImage, status }) {
         try {
             return await this.databases.updateDocument(

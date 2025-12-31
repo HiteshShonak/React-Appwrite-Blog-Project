@@ -7,7 +7,6 @@ function PostCard({ $id, Title, featuredImage, priority = false }) {
     const prefetchedRef = useRef(false);
     const hoverTimeoutRef = useRef(null);
 
-    // ✅ FIXED: Remove equality check for proper re-renders
     const rating = useSelector((state) => state.ratings?.postRatings?.[$id] || null);
 
     const handleMouseEnter = useCallback(() => {

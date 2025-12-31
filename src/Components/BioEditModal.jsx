@@ -17,27 +17,21 @@ function BioEditModal({ isOpen, onClose, initialBio, userData, onBioSaved }) {
         };
     }, []);
 
-    // Update bio input when modal opens or initial bio changes
     useEffect(() => {
         if (isOpen) {
             setBioInput(initialBio || "");
         }
     }, [initialBio, isOpen]);
 
-    // Focus management + scroll lock WITHOUT layout shift
     useEffect(() => {
         if (isOpen) {
-            // Calculate scrollbar width
             const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
             
-            // Lock scroll and compensate for scrollbar
             document.body.style.overflow = 'hidden';
             document.body.style.paddingRight = `${scrollbarWidth}px`;
             
-            // Store current focus
             previousFocusRef.current = document.activeElement;
             
-            // Focus textarea after render
             setTimeout(() => {
                 textareaRef.current?.focus();
             }, 100);
@@ -45,7 +39,6 @@ function BioEditModal({ isOpen, onClose, initialBio, userData, onBioSaved }) {
             document.body.style.overflow = 'unset';
             document.body.style.paddingRight = '0px';
             
-            // Restore focus
             if (previousFocusRef.current) {
                 previousFocusRef.current?.focus();
                 previousFocusRef.current = null;
@@ -58,7 +51,6 @@ function BioEditModal({ isOpen, onClose, initialBio, userData, onBioSaved }) {
         };
     }, [isOpen]);
 
-    // ESC key to close
     useEffect(() => {
         if (!isOpen) return;
 
@@ -114,18 +106,15 @@ function BioEditModal({ isOpen, onClose, initialBio, userData, onBioSaved }) {
             aria-modal="true"
             aria-labelledby="bio-modal-title"
         >
-            {/* Backdrop */}
             <div 
                 className="gpu-accelerate absolute inset-0" 
                 onClick={handleClose}
             />
 
-            {/* Modal content */}
             <div 
                 className="gpu-accelerate relative bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 border border-slate-100 modal-scale-animation"
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Close button */}
                 <button 
                     onClick={handleClose}
                     disabled={saving}

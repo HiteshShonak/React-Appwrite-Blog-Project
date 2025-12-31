@@ -14,11 +14,9 @@ export async function getCroppedImg(imageSrc, pixelCrop) {
 
   if (!ctx) return null;
 
-  // Set canvas size to the cropped size
   canvas.width = pixelCrop.width;
   canvas.height = pixelCrop.height;
 
-  // Draw the image onto the canvas
   ctx.drawImage(
     image,
     pixelCrop.x,
@@ -32,14 +30,12 @@ export async function getCroppedImg(imageSrc, pixelCrop) {
   );
 
   return new Promise((resolve, reject) => {
-    // 🚨 OPTIMIZATION: Use quality 1.0 (Max) so we feed high-quality data to your compressor
     canvas.toBlob((blob) => {
       if (!blob) {
         reject(new Error('Canvas is empty'));
         return;
       }
       
-      // Cleanup canvas memory to prevent lag
       canvas.width = 0;
       canvas.height = 0;
       

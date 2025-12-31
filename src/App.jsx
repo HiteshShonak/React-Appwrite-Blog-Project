@@ -12,17 +12,13 @@ function App() {
   const authStatus = useSelector((state) => state.auth.status)
 
   useEffect(() => {
-    // ✅ Validate session on app load
     if (authStatus) {
-      // User has auth in localStorage, verify with backend
       authService.getCurrentUser()
         .then((userData) => {
           if (userData) {
             dispatch(login({ userData }));
           } else {
-            // Session expired - clean up
             dispatch(logout());
-            // ✅ NEW: Clean up zombie sessions
             authService.logout().catch(() => {
               console.log("No sessions to clean");
             });
@@ -31,17 +27,15 @@ function App() {
         .catch((error) => {
           console.error('Auth validation failed:', error);
           dispatch(logout());
-          // ✅ NEW: Clean up zombie sessions
           authService.logout().catch(() => {
             console.log("No sessions to clean");
           });
         })
         .finally(() => setLoading(false));
     } else {
-      // Not logged in, skip backend check
       setLoading(false);
     }
-  }, []); // Only run once on mount
+  }, []); 
 
   if (loading) {
     return <GlobalSplash />; 

@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-    profiles: {} // Structure: { "userId1": { username: "...", avatar: "..." }, "userId2": ... }
+    profiles: {}
 }
 
 const usersSlice = createSlice({
@@ -10,7 +10,6 @@ const usersSlice = createSlice({
     reducers: {
         cacheUserProfile: (state, action) => {
             const { userId, profileData } = action.payload;
-            // Add or Update the specific user in the object
             state.profiles[userId] = profileData;
         }
     }

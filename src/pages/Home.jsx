@@ -16,7 +16,6 @@ const TrendingCard = React.memo(({ post, onClick, priority = false }) => {
         ? cachedRating.average 
         : cachedRating;
 
-    // ✅ ADDED: Keyboard Accessibility (Enter/Space to open)
     const handleKeyDown = useCallback((e) => {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
@@ -34,7 +33,6 @@ const TrendingCard = React.memo(({ post, onClick, priority = false }) => {
         >
             <div className="gpu-accelerate pointer-events-none bg-white rounded-xl h-full overflow-hidden border border-slate-100 relative group"> 
                 
-                {/* Explicit Aspect Ratio Container */}
                 <div className='w-full bg-slate-200 relative aspect-video'>
                     <img 
                         src={appwriteService.getFileView(post.featuredImage)} 
@@ -86,7 +84,6 @@ function Home() {
     const isMountedRef = useRef(true);
     const hasFetchedRef = useRef(false);
 
-    // Infinite carousel array logic
     const carouselItems = useMemo(() => {
         if (trending.length === 0) return [];
         return Array(6).fill(trending).flat();
@@ -108,7 +105,6 @@ function Home() {
             setLoading(true);
 
             try {
-                // Limit to 6 posts
                 const trendingResponse = await appwriteService.getTrendingPosts(6);
 
                 if (!isMountedRef.current) return;

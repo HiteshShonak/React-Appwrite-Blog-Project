@@ -6,7 +6,6 @@ import { compressImage } from '../utils/compressImage';
 import AvatarCropper from './ImageCropper';
 import { parseErrorMessage } from '../utils/errorUtils';
 
-// ✅ OPTIMIZATION 1: Move outside component (not recreated on every render)
 const getInitials = (name) => {
     if (!name) return 'U';
     const parts = name.trim().split(' ');
@@ -20,12 +19,11 @@ function ProfilePictureManager({ onProfileUpdate, initialFileId }) {
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [selectedImageForCrop, setSelectedImageForCrop] = useState(null);
-    const [error, setError] = useState(""); // ✅ NEW: Error banner state
-    const [loadingFileId, setLoadingFileId] = useState(false); // ✅ NEW: Loading state
+    const [error, setError] = useState(""); 
+    const [loadingFileId, setLoadingFileId] = useState(false); 
     
-    const fileReaderRef = useRef(null); // ✅ FIX 3: Track FileReader for cleanup
+    const fileReaderRef = useRef(null); 
 
-    // ✅ FIX 4: Auto-dismiss error after 5 seconds
     useEffect(() => {
         if (error) {
             const timer = setTimeout(() => setError(""), 5000);
@@ -33,14 +31,12 @@ function ProfilePictureManager({ onProfileUpdate, initialFileId }) {
         }
     }, [error]);
 
-    // Sync prop changes to local state
     useEffect(() => {
         if (initialFileId !== undefined) {
             setFileId(initialFileId);
         }
     }, [initialFileId]);
 
-    // ✅ FIX 1: Fetch fileId with error handling
     useEffect(() => {
         if (userData && initialFileId === undefined) {
             setLoadingFileId(true);
@@ -54,7 +50,6 @@ function ProfilePictureManager({ onProfileUpdate, initialFileId }) {
         }
     }, [userData, initialFileId]);
 
-    // ✅ FIX 2: Scroll lock WITH scrollbar compensation
     useEffect(() => {
         if (isAvatarModalOpen) {
             const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
@@ -70,7 +65,6 @@ function ProfilePictureManager({ onProfileUpdate, initialFileId }) {
         };
     }, [isAvatarModalOpen]);
 
-    // ✅ FIX 3: Cleanup FileReader on unmount
     useEffect(() => {
         return () => {
             if (fileReaderRef.current) {
@@ -79,12 +73,10 @@ function ProfilePictureManager({ onProfileUpdate, initialFileId }) {
         };
     }, []);
 
-    // ✅ OPTIMIZATION 2: Memoized file select handler
     const onFileSelect = useCallback((e) => {
         if (e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
 
-            // ✅ FIX 5: Use error banner instead of alert
             if (file.size > 10 * 1024 * 1024) {
                 setError("Image is too large. Please use an image under 10MB.");
                 e.target.value = null;
@@ -92,7 +84,7 @@ function ProfilePictureManager({ onProfileUpdate, initialFileId }) {
             }
 
             const reader = new FileReader();
-            fileReaderRef.current = reader; // Track for cleanup
+            fileReaderRef.current = reader;
             
             reader.addEventListener('load', () => {
                 setSelectedImageForCrop(reader.result);
@@ -109,11 +101,10 @@ function ProfilePictureManager({ onProfileUpdate, initialFileId }) {
         }
     }, []);
 
-    // ✅ OPTIMIZATION 3: Memoized crop complete handler
     const onCropComplete = useCallback(async (croppedFile) => {
         setSelectedImageForCrop(null);
         setUploadingAvatar(true);
-        setError(""); // Clear any previous errors
+        setError(""); 
 
         try {
             const compressedFile = await compressImage(croppedFile, 'avatar', userData.name);
@@ -122,11 +113,9 @@ function ProfilePictureManager({ onProfileUpdate, initialFileId }) {
             if (uploadedFile) {
                 await appwriteService.saveProfileImageId(userData.$id, uploadedFile.$id);
                 
-                // Delete old avatar if exists
                 if (fileId) {
                     await appwriteService.deleteFile(fileId).catch(err => {
                         console.error('Error deleting old avatar:', err);
-                        // Don't fail the whole operation if old file delete fails
                     });
                 }
 
@@ -142,12 +131,11 @@ function ProfilePictureManager({ onProfileUpdate, initialFileId }) {
         }
     }, [fileId, userData, onProfileUpdate]);
 
-    // ✅ OPTIMIZATION 4: Memoized remove handler
     const handleRemoveProfilePic = useCallback(async () => {
         if (!fileId || !userData) return;
         
         setUploadingAvatar(true);
-        setError(""); // Clear any previous errors
+        setError(""); 
         
         try {
             await appwriteService.deleteFile(fileId);
@@ -163,14 +151,12 @@ function ProfilePictureManager({ onProfileUpdate, initialFileId }) {
         }
     }, [fileId, userData, onProfileUpdate]);
 
-    // ✅ OPTIMIZATION 5: Memoized modal close
     const closeModal = useCallback(() => {
         if (!uploadingAvatar) {
             setIsAvatarModalOpen(false);
         }
     }, [uploadingAvatar]);
 
-    // ✅ OPTIMIZATION 6: Memoized cancel crop
     const cancelCrop = useCallback(() => {
         setSelectedImageForCrop(null);
         if (fileReaderRef.current) {
@@ -181,7 +167,6 @@ function ProfilePictureManager({ onProfileUpdate, initialFileId }) {
 
     return (
         <>
-            {/* ✅ NEW: Error Banner */}
             {error && (
                 <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-10000 w-full max-w-md px-4">
                     <div className="bg-red-600 text-white px-6 py-3 rounded-lg shadow-2xl border-2 border-red-700 flex items-center gap-3 animate-bounce">
@@ -201,7 +186,6 @@ function ProfilePictureManager({ onProfileUpdate, initialFileId }) {
                 </div>
             )}
 
-            {/* Avatar cropper modal */}
             {selectedImageForCrop && (
                 <AvatarCropper 
                     imageSrc={selectedImageForCrop}
@@ -210,13 +194,11 @@ function ProfilePictureManager({ onProfileUpdate, initialFileId }) {
                 />
             )}
 
-            {/* Avatar display with edit trigger */}
             <div 
                 onClick={() => setIsAvatarModalOpen(true)}
                 className="interactive gpu-accelerate relative group w-16 h-16 rounded-full overflow-hidden border border-slate-200 shrink-0 cursor-pointer shadow-sm hover:shadow-md transition-all"
             >
                 {loadingFileId ? (
-                    // ✅ NEW: Loading state while fetching fileId
                     <div className="w-full h-full bg-slate-100 flex items-center justify-center">
                         <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                     </div>
@@ -238,7 +220,6 @@ function ProfilePictureManager({ onProfileUpdate, initialFileId }) {
                 </div>
             </div>
 
-            {/* Profile picture management modal */}
             {isAvatarModalOpen && !selectedImageForCrop && createPortal(
                 <div 
                     className="gpu-accelerate fixed inset-0 z-9999 flex items-center justify-center p-4 modal-backdrop-instant-blur"

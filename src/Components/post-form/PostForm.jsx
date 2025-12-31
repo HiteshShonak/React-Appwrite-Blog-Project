@@ -13,31 +13,25 @@ import { updateTrendingPost } from '../../Store/homeSlice';
 import ImageCropper from '../ImageCropper.jsx';
 import {EditorLoader} from '../Skeletons.jsx';
 
-// ✅ SMART CACHE MANAGER: Updates localStorage directly to prevent API calls
 const updateDashboardCache = (action, post) => {
     try {
         const cacheKey = 'dashboard_user_posts';
         const cachedData = localStorage.getItem(cacheKey);
         
-        if (!cachedData) return; // If no cache, Redux/API will handle it normally
+        if (!cachedData) return; 
 
         let posts = JSON.parse(cachedData);
 
         if (action === 'add') {
-            // Add new post to the top
             posts.unshift(post);
         } else if (action === 'update') {
-            // Find and replace the specific post
             posts = posts.map(p => p.$id === post.$id ? post : p);
         }
 
-        // Save back to localStorage immediately
         localStorage.setItem(cacheKey, JSON.stringify(posts));
-        console.log(`✅ Dashboard cache updated (${action}) - No API fetch required.`);
         
     } catch (error) {
         console.error("Manual cache update failed:", error);
-        // If update fails, fallback to clearing so we fetch fresh next time
         localStorage.removeItem('dashboard_user_posts');
     }
 };
@@ -270,13 +264,11 @@ function PostForm({ post }) {
         if (!isMountedRef.current) return;
         
         if (dbPost) {
-            // 1. Update Redux (Memory) - Shows instantly in UI
             if (dbPost.Status === 'active') {
                 dispatch(addPost(dbPost));
             }
             dispatch(addUserPost(dbPost));
 
-            // 2. Update LocalStorage (Disk) - Persists refresh without API call
             updateDashboardCache('add', dbPost);
             
             localStorage.removeItem("blog-post-draft");
@@ -293,14 +285,12 @@ function PostForm({ post }) {
         if (!isMountedRef.current) return;
         
         if (dbPost) {
-            // 1. Update Redux (Memory)
             if (dbPost.Status === 'active') {
                 dispatch(updatePost(dbPost));
                 dispatch(updateTrendingPost(dbPost));
             }
             dispatch(updateUserPost(dbPost));
 
-            // 2. Update LocalStorage (Disk) - Zero API on reload
             updateDashboardCache('update', dbPost);
             
             localStorage.removeItem("blog-post-draft");
@@ -374,7 +364,6 @@ function PostForm({ post }) {
         };
     }, []);
 
-    // LOGIC FOR LOADER STATE
     let loaderType = 'init';
     if (submitting) {
         loaderType = isEditMode ? 'update' : 'publish';
@@ -394,7 +383,6 @@ function PostForm({ post }) {
                 />
             )}
 
-            {/* UPDATED LOADER IMPLEMENTATION */}
             {isLoading && createPortal(
                 <EditorLoader type={loaderType} />,
                 document.body

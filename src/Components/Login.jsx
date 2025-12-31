@@ -29,7 +29,6 @@ function Login() {
         };
     }, []);
 
-    // ✅ Locks the background scroll when the loader is active
     useEffect(() => {
         document.body.style.overflow = loading ? 'hidden' : 'unset';
         return () => { document.body.style.overflow = 'unset'; };
@@ -95,7 +94,6 @@ function Login() {
 
     return (
         <div className='relative pt-20'>
-            {/* Loading Overlay */}
             {loading && createPortal(
                 <div className="fixed inset-0 z-9999 flex items-center justify-center bg-slate-900/80 backdrop-blur-md transition-all duration-300">
                     <div className="relative flex flex-col items-center">
@@ -120,7 +118,6 @@ function Login() {
                 document.body
             )}
 
-            {/* Error Banner */}
             {error && (
                 <div className='gpu-accelerate absolute top-0 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4'>
                     <div className='gpu-accelerate bg-red-600 text-white px-6 py-3 rounded-lg shadow-2xl border-2 border-red-700 animate-bounce flex items-center gap-3'>
@@ -139,7 +136,7 @@ function Login() {
                 </div>
 
                 <form onSubmit={handleSubmit(login)} className='space-y-4 flex flex-col justify-center'>
-                    {/* Email Field */}
+                    
                     <div>
                         <Input
                             label="Email"
@@ -165,9 +162,8 @@ function Login() {
                         )}
                     </div>
 
-                    {/* Password Field with Eye Toggle */}
                     <div>
-                        <label className="inline-block mb-1.5 pl-1 text-sm font-medium text-gray-700"> {/* ✅ CHANGE 1: mb-1 → mb-1.5, added pl-1 */}
+                        <label className="inline-block mb-1.5 pl-1 text-sm font-medium text-gray-700">
                             Password
                         </label>
                         <div className="relative">
@@ -198,12 +194,10 @@ function Login() {
                                 tabIndex={isFormDisabled ? -1 : 0}
                             >
                                 {showPassword ? (
-                                    // Eye Slash Icon (Password Visible)
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                                     </svg>
                                 ) : (
-                                    // Eye Open Icon (Password Hidden)
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />

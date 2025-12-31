@@ -9,7 +9,6 @@ import { useForm } from 'react-hook-form';
 import { parseErrorMessage } from '../utils/errorUtils';
 import { createPortal } from 'react-dom';
 
-// Debounce utility function
 const debounce = (func, delay) => {
     let timeoutId;
     return (...args) => {
@@ -26,7 +25,6 @@ function Signup() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     
-    // ✅ WATCH: Monitors both password and username for real-time UI updates
     const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm({
         mode: "onChange"
     });
@@ -39,9 +37,8 @@ function Signup() {
     
     const isMountedRef = useRef(true);
     const passwordValue = watch("password");
-    const usernameValue = watch("username"); // ✅ NEW: Watch username to handle length < 4 visual logic
+    const usernameValue = watch("username"); 
     
-    // ✅ OPTIMIZED: 500ms Debounce for API call
     const debouncedUsernameCheck = useMemo(
         () => debounce(async (username) => {
             if (!username || username.length < 4) return null;
@@ -61,7 +58,6 @@ function Signup() {
         return () => { isMountedRef.current = false; };
     }, []);
 
-    // ✅ LOGIC: Scroll Lock
     useEffect(() => {
         const isFormLoading = loading || isSubmitting;
         document.body.style.overflow = isFormLoading ? 'hidden' : 'unset';
@@ -140,7 +136,6 @@ function Signup() {
 
     return (
         <div className='relative pt-10 pb-20'>
-            {/* Signup Loader */}
             {isFormLoading && createPortal(
                 <div className="fixed inset-0 z-9999 flex items-center justify-center bg-slate-900/80 backdrop-blur-md transition-all duration-300">
                     <div className="relative flex flex-col items-center">
@@ -165,7 +160,6 @@ function Signup() {
                 document.body
             )}
 
-            {/* Error Banner */}
             {error && (
                 <div className='gpu-accelerate absolute -top-6 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4'>
                     <div className='gpu-accelerate bg-red-600 text-white px-6 py-3 rounded-lg shadow-2xl border-2 border-red-700 animate-bounce flex items-center gap-3'>
@@ -185,7 +179,6 @@ function Signup() {
                 
                 <form onSubmit={handleSubmit(createAccount)} className='space-y-4 flex justify-center flex-col'>
                     
-                    {/* Full Name */}
                     <div>
                         <Input
                             label="Full Name"
@@ -211,7 +204,6 @@ function Signup() {
                         )}
                     </div>
 
-                    {/* Username */}
                     <div>
                         <label className="inline-block mb-1.5 pl-1 text-sm font-medium text-gray-700">
                             Username
@@ -248,7 +240,6 @@ function Signup() {
                                 })}
                             />
                             
-                            {/* STATUS ICON: Explicitly hides if length < 4 */}
                             {usernameAvailable !== null && usernameValue && usernameValue.length >= 4 && (
                                 <span className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
                                     {usernameAvailable ? (
@@ -264,7 +255,6 @@ function Signup() {
                             )}
                         </div>
 
-                        {/* Helper Text */}
                         {errors.username ? (
                             <p id="username-error" className="text-red-600 text-xs mt-1 text-left" role="alert">
                                 {errors.username.message}
@@ -280,7 +270,6 @@ function Signup() {
                         )}
                     </div>
 
-                    {/* Email */}
                     <div>
                         <Input
                             label="Email"
@@ -304,7 +293,6 @@ function Signup() {
                         )}
                     </div>
 
-                    {/* Password */}
                     <div>
                         <label className="inline-block mb-1.5 pl-1 text-sm font-medium text-gray-700">
                             Password

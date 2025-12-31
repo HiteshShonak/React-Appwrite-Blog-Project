@@ -5,14 +5,10 @@ import appwriteService from '../appwrite/config';
 import { Link, useNavigate } from 'react-router-dom';
 import { cacheUserProfile } from '../Store/usersSlice';
 
-// ============================================================
-// 💬 MEMOIZED COMMENT ITEM COMPONENT
-// ============================================================
 const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, postAuthorId }) => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
-    // ✅ Optimization: Check Redux cache for author profile
     const cachedAuthor = useSelector((state) => 
         state.users && comment.userId ? state.users.profiles[comment.userId] : null
     );
@@ -45,7 +41,6 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
     }, [comment.$createdAt, isTemp]);
 
     useEffect(() => {
-        // If we have cached data or it's a temp comment, use it/skip fetch
         if (isTemp || cachedAuthor) {
             if (cachedAuthor) {
                 setAuthorUsername(cachedAuthor.username);
@@ -69,7 +64,6 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
                     setAuthorUsername(username);
                     setAuthorAvatarUrl(avatarUrl);
                     
-                    // Cache for future use
                     dispatch(cacheUserProfile({
                         userId: comment.userId,
                         profileData: { username, avatar: avatarUrl }
@@ -171,9 +165,6 @@ const CommentItem = memo(({ comment, userData, toggleLike, setDeleteCommentId, p
 
 CommentItem.displayName = 'CommentItem';
 
-// ============================================================
-// 💬 MAIN COMMENTS COMPONENT
-// ============================================================
 function Comments({ postId, postAuthorId }) {
     if (!postId) {
         return (
@@ -211,7 +202,6 @@ function Comments({ postId, postAuthorId }) {
         return () => { document.body.style.overflow = 'unset'; };
     }, [deleteCommentId]);
 
-    // Current User Profile Logic
     useEffect(() => {
         if (!userData) {
             setCurrentUserAvatar(null);
@@ -251,7 +241,6 @@ function Comments({ postId, postAuthorId }) {
         };
     }, [userData, cachedUserProfile, dispatch]);
 
-    // Initial Load of Comments
     useEffect(() => {
         let isCancelled = false;
 
@@ -326,16 +315,14 @@ function Comments({ postId, postAuthorId }) {
                 likedBy: []
             });
             
-            // Re-fetch to get real ID and server timestamp
             if (isMountedRef.current) {
                 fetchComments(true);
             }
         } catch (error) {
             console.error("Error posting comment:", error);
             if (isMountedRef.current) {
-                // Rollback on error
                 setComments((prev) => prev.filter(c => c.$id !== tempId));
-                setNewComment(content); // Restore text so user doesn't lose it
+                setNewComment(content); 
             }
         } finally {
             if (isMountedRef.current) {
@@ -354,11 +341,11 @@ function Comments({ postId, postAuthorId }) {
 
         try {
             await appwriteService.deleteComment(commentToDelete);
-            fetchComments(true); // Sync with server
+            fetchComments(true);
         } catch (error) {
             console.error("Error deleting comment:", error);
             if (isMountedRef.current) {
-                setComments(previousComments); // Rollback
+                setComments(previousComments); 
             }
         }
     }, [deleteCommentId, comments, fetchComments]);
@@ -377,7 +364,7 @@ function Comments({ postId, postAuthorId }) {
             await appwriteService.updateComment(comment.$id, { likedBy: updatedLikes });
         } catch (error) { 
             console.error("Error toggling like:", error);
-            fetchComments(true); // Revert/Sync on error
+            fetchComments(true); 
         }
     }, [userData, fetchComments]);
 

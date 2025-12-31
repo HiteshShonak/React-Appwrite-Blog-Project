@@ -23,7 +23,6 @@ const postSlice = createSlice({
             state.posts = state.posts.filter((post) => post.$id !== action.payload);
         }
     },
-    // 🏆 BEST APPROACH: Simple + Reliable
     extraReducers: (builder) => {
         builder
             .addMatcher(
@@ -33,18 +32,15 @@ const postSlice = createSlice({
                     const postId = updatedPost.$id;
                     const existsInAllPosts = state.posts.some(post => post.$id === postId);
                     
-                    // ✅ Active → Draft: REMOVE from AllPosts
                     if (updatedPost.Status === 'draft' && existsInAllPosts) {
                         state.posts = state.posts.filter((post) => post.$id !== postId);
                     }
-                    // ✅ Active → Active: UPDATE in AllPosts
+                    
                     else if (updatedPost.Status === 'active' && existsInAllPosts) {
                         state.posts = state.posts.map((post) => 
                             post.$id === postId ? updatedPost : post
                         );
                     }
-                    // ✅ Draft → Active: DO NOTHING (let backend handle on next visit)
-                    // User will see it when they refresh or navigate to AllPosts
                 }
             )
             .addMatcher(
